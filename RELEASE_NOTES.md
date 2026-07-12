@@ -43,7 +43,7 @@ store. Standalone — no external skill-family dependency.
 ## Install
 
 ```bash
-uv tool install ai-guardian
+uv tool install ai-guardian-aiops
 ai-guardian init      # optional: Ollama endpoint(s) + optional token + model allowlist
 ai-guardian doctor
 ```

@@ -6,7 +6,7 @@
 ## 1. Install
 
 ```bash
-uv tool install ai-guardian
+uv tool install ai-guardian-aiops
 ```
 
 ## 2. Zero-config default

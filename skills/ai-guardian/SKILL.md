@@ -64,7 +64,7 @@ is disallowed; blocked calls never reach Ollama and are recorded as blocked.
 ## Quick Install
 
 ```bash
-uv tool install ai-guardian
+uv tool install ai-guardian-aiops
 ai-guardian doctor          # works zero-config against a local Ollama
 ai-guardian init            # optional: endpoint(s) + optional token + model allowlist
 ```

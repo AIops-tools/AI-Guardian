@@ -94,7 +94,7 @@ Blocked calls never reach Ollama and are recorded as blocked in the usage log.
 ## Quick start
 
 ```bash
-uv tool install ai-guardian          # or: pipx install ai-guardian
+uv tool install ai-guardian-aiops          # or: pipx install ai-guardian-aiops
 ai-guardian doctor                   # Ollama reachability + policy summary (works zero-config)
 ai-guardian overview                 # models installed/running, shadow count, usage stats
 ai-guardian model list               # installed models with allow/deny verdicts
