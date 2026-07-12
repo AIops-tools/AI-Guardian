@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.AIops-tools/ai-guardian",
+  "title": "AI Guardian",
+  "description": "Governed local-LLM (Ollama) observability: model policy, prompt scanner, 18 tools.",
+  "repository": {
+    "url": "https://github.com/AIops-tools/AI-Guardian",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "ai-guardian",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
