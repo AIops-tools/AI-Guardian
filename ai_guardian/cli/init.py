@@ -15,6 +15,42 @@ import yaml
 
 from ai_guardian.cli._common import cli_errors, console
 from ai_guardian.config import CONFIG_DIR, CONFIG_FILE, DEFAULT_HOST, DEFAULT_PORT
+from ai_guardian.governance.paths import ops_path
+
+# Starter policy: keeps the secure-by-default gate (high/critical writes need a
+# named approver) explicit and editable, and shows the other rule kinds.
+DEFAULT_RULES_YAML = """\
+# ai-guardian policy rules — hot-reloaded on change (no restart needed).
+# Kinds: deny rules, maintenance_window, risk_tiers (graduated autonomy).
+
+risk_tiers:
+  - name: high-risk-requires-approver
+    tier: dual
+    min_risk_level: high
+    reason: >-
+      High/critical writes need a named human approver — set
+      AI_GUARDIAN_AUDIT_APPROVED_BY (and AI_GUARDIAN_AUDIT_RATIONALE) before the call.
+
+# deny:
+#   - name: no-model-removal
+#     operations: ["remove_*"]
+#     reason: "Removing local models goes through change management."
+
+# maintenance_window:
+#   start: "22:00"
+#   end: "06:00"
+"""
+
+
+def _write_default_rules() -> None:
+    """Seed a starter rules.yaml (only when none exists) so the policy layer
+    is explicit from day one; never overwrites an operator-authored file."""
+    rules_path = ops_path("rules.yaml")
+    if rules_path.exists():
+        return
+    rules_path.parent.mkdir(parents=True, exist_ok=True)
+    rules_path.write_text(DEFAULT_RULES_YAML, "utf-8")
+    console.print(f"[green]✓ Wrote default policy rules:[/] {rules_path}")
 
 
 def _write_config(doc: dict) -> None:
@@ -66,6 +102,7 @@ def init_cmd() -> None:
         doc["denied_models"] = [p.strip() for p in deny.split(",") if p.strip()]
 
     _write_config(doc)
+    _write_default_rules()
     console.print(f"\n[green]✓ Setup complete.[/] Config: {CONFIG_FILE}")
     if typer.confirm("Run a reachability check now (ai-guardian doctor)?", default=True):
         from ai_guardian.doctor import run_doctor

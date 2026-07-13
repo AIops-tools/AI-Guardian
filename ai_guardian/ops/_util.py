@@ -2,7 +2,7 @@
 
 Normalises Ollama model/runtime records and sanitises all model-supplied text
 (names, licenses, templates) before it reaches the agent — a local model's
-metadata is still untrusted input per the prompt-injection defense.
+metadata is still untrusted input per the output-hygiene rule.
 """
 
 from __future__ import annotations
