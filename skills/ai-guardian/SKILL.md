@@ -117,6 +117,7 @@ before it ever reaches a local model.
 
 - Every tool call is audited to `~/.ai-guardian/audit.db` (relocatable via `AI_GUARDIAN_AIOPS_HOME`); observed local-LLM usage lives in a **separate** `~/.ai-guardian/usage.db`.
 - High-risk `remove_model` can require a named approver: set `AI_GUARDIAN_AUDIT_APPROVED_BY` and `AI_GUARDIAN_AUDIT_RATIONALE`.
+- **Secure by default (v0.2.0+)**: with no `~/.ai-guardian/rules.yaml`, high/critical operations are denied unless `AI_GUARDIAN_AUDIT_APPROVED_BY` names an approver (set `AI_GUARDIAN_AUDIT_RATIONALE` too). `ai-guardian init` seeds a starter rules.yaml; an operator-authored rules file is honoured as-is.
 - `remove_model` supports `--dry-run` + double confirmation at the CLI and records an undo (re-pull); allowlist/denylist writes record an undo → the prior list.
 - The scanner is deterministic and offline; findings are redacted so a secret is never re-emitted.
 
