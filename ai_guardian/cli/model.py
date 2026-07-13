@@ -60,10 +60,9 @@ def model_details(model: NameArg, target: TargetOption = None) -> None:
 @cli_errors
 def model_pull(model: NameArg, target: TargetOption = None) -> None:
     """Pull a model (refused if it violates policy)."""
-    from ai_guardian.ops import models as ops
+    from mcp_server.tools import models as gov
 
-    conn, cfg = get_connection(target)
-    console.print_json(json.dumps(ops.pull_model(conn, cfg, model)))
+    console.print_json(json.dumps(gov.pull_model(model=model, target=target)))
 
 
 @model_app.command("remove")
@@ -71,22 +70,20 @@ def model_pull(model: NameArg, target: TargetOption = None) -> None:
 def model_remove(model: NameArg, target: TargetOption = None,
                  dry_run: DryRunOption = False) -> None:
     """Delete a local model (dry-run + double confirm)."""
-    from ai_guardian.ops import models as ops
-
     if dry_run:
         dry_run_print(operation="remove_model", api_call="DELETE /api/delete",
                       parameters={"model": model})
         return
     double_confirm("remove model", model)
-    conn, _ = get_connection(target)
-    console.print_json(json.dumps(ops.remove_model(conn, model)))
+    from mcp_server.tools import models as gov
+
+    console.print_json(json.dumps(gov.remove_model(model=model, target=target)))
 
 
 @model_app.command("unload")
 @cli_errors
 def model_unload(model: NameArg, target: TargetOption = None) -> None:
     """Evict a model from VRAM (keep_alive:0)."""
-    from ai_guardian.ops import models as ops
+    from mcp_server.tools import models as gov
 
-    conn, _ = get_connection(target)
-    console.print_json(json.dumps(ops.unload_model(conn, model)))
+    console.print_json(json.dumps(gov.unload_model(model=model, target=target)))

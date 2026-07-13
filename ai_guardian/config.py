@@ -24,9 +24,10 @@ from pathlib import Path
 
 import yaml
 
+from ai_guardian.governance.paths import ops_home
 from ai_guardian.secretstore import SecretStoreError, get_secret, has_store
 
-CONFIG_DIR = Path.home() / ".ai-guardian"
+CONFIG_DIR = ops_home()
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 ENV_FILE = CONFIG_DIR / ".env"
 
