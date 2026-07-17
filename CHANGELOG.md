@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.3.0 — 2026-07-17
+
+### Added
+- **New:** llama.cpp / LM Studio / local vLLM runtimes via one OpenAI-compatible transport.
+- **Undo executor**: `undo list` / `undo apply <id>` (CLI + MCP) — apply a recorded replayable inverse; the dispatched inverse is re-gated by its own risk tier; single-use, dry-run, double-confirm, both wrapper + inverse audited.
+
+## Unreleased
+
+### Added
+- **Multiple local-LLM runtimes** beyond Ollama, via a runtime registry
+  (`ai_guardian/runtimes.py`) selected per target by a `runtime` config field:
+  - **llama.cpp** (`llama-server`) — OpenAI-compatible `/v1` plus native `/health`
+    and `/props` (served model path/size → a pinnable provenance digest).
+  - **LM Studio** — OpenAI-compatible local server (default `:1234`).
+  - **vLLM** — OpenAI-compatible **LOCAL single-node** endpoint (default `:8000`).
+    GPU inference-**cluster** ops remain out of scope (→ inference-aiops).
+  All three share ONE `openai_compat` transport (`ai_guardian/ops/openai_compat.py`);
+  per-runtime metadata (default port, health path, provenance strength) lives in
+  the registry. Allow/deny policy verdicts, the route-through guard
+  (`guarded_generate` / `observe_chat`), provenance drift, `doctor`, and the `init`
+  wizard now all work across runtimes.
+- Provenance is honest per runtime: `digest` (Ollama), `props`-derived (llama.cpp),
+  and `id_only` (LM Studio / vLLM) — a pinned id-only model with no digest is
+  reported `unverifiable`, never a false `DRIFT`.
+
+### Notes
+- Model lifecycle writes (`pull` / `remove` / `unload`) are Ollama-only; the
+  OpenAI-compatible servers load a model at startup and refuse those writes with a
+  clear message.
+
 ## v0.2.1 — 2026-07-16
 
 ### Fixed

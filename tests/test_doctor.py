@@ -87,7 +87,7 @@ def test_zero_config_defaults_to_local_target(isolated_home, ok_connection, caps
     # No config.yaml at all — doctor must still work against the local default.
     assert run_doctor() == 0
     out = _out(capsys)
-    assert "1 Ollama target(s) configured" in out
+    assert "1 runtime target(s) configured" in out
     assert "No secret store" in out  # informational, not a failure
     assert "'local' (http://localhost:11434) — Ollama 0.9.9" in out
     ok_connection.return_value.connect.assert_called_once_with("local")
@@ -106,7 +106,7 @@ def test_all_healthy_exits_zero(isolated_home, ok_connection, capsys):
     _store_secret()
     assert run_doctor() == 0
     out = _out(capsys)
-    assert "1 Ollama target(s) configured" in out
+    assert "1 runtime target(s) configured" in out
     assert "Encrypted secret store present" in out
     assert "'local' (http://localhost:11434) — Ollama 0.9.9" in out
     ok_connection.return_value.connect.assert_called_once_with("local")

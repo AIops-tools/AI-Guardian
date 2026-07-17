@@ -1,4 +1,8 @@
-"""Environment + Ollama endpoint diagnostics for AI Guardian."""
+"""Environment + local-LLM endpoint diagnostics for AI Guardian.
+
+Probes every configured runtime target — Ollama and the OpenAI-compatible
+runtimes (llama.cpp / LM Studio / vLLM) — reporting each with its runtime name.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +29,7 @@ def run_doctor(skip_auth: bool = False) -> int:
         _console.print(f"[red]✗ Config load failed: {exc}[/]")
         return 1
 
-    _console.print(f"[green]✓ {len(config.targets)} Ollama target(s) configured[/]")
+    _console.print(f"[green]✓ {len(config.targets)} runtime target(s) configured[/]")
     _console.print(
         f"[dim]  policy: {len(config.allowed_models)} allow / "
         f"{len(config.denied_models)} deny pattern(s), {len(config.pins)} digest pin(s)[/]"
@@ -51,9 +55,10 @@ def run_doctor(skip_auth: bool = False) -> int:
         conn = mgr.connect(target.name)
         status = server_status(conn)
         if status.get("reachable"):
+            version = status.get("version") or "reachable"
             _console.print(
-                f"[green]✓ '{target.name}' ({target.base_url}) — Ollama "
-                f"{status.get('version', '?')}[/]"
+                f"[green]✓ '{target.name}' ({target.base_url}) — "
+                f"{target.spec.display_name} {version}[/]"
             )
         else:
             _console.print(

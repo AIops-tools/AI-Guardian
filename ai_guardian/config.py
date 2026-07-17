@@ -1,13 +1,16 @@
 """Configuration management for AI Guardian.
 
-Loads local-LLM endpoint targets (Ollama) from a YAML config file plus the model
-**allow / deny policy**. A "target" is one Ollama runtime (default
-``http://localhost:11434``, usually no auth). Ollama endpoints frequently run
-open on a trusted host, so the bearer **token is optional**: if none is stored,
-requests are sent unauthenticated. When a token is used it is NEVER stored in the
-config file or in plaintext — it lives in the encrypted store
-``~/.ai-guardian/secrets.enc`` (see :mod:`ai_guardian.secretstore`), with a legacy
-env var (``AI_GUARDIAN_<TARGET>_TOKEN``) honoured as a fallback.
+Loads local-LLM endpoint targets from a YAML config file plus the model
+**allow / deny policy**. A "target" is one local-LLM runtime; its ``runtime``
+field selects the family — ``ollama`` (default, ``http://localhost:11434``) or an
+OpenAI-compatible ``llamacpp`` / ``lmstudio`` / ``vllm`` (see
+:mod:`ai_guardian.runtimes`). The port defaults to that runtime's conventional
+port when unspecified. Local runtimes frequently run open on a trusted host, so
+the bearer **token is optional**: if none is stored, requests are sent
+unauthenticated. When a token is used it is NEVER stored in the config file or in
+plaintext — it lives in the encrypted store ``~/.ai-guardian/secrets.enc`` (see
+:mod:`ai_guardian.secretstore`), with a legacy env var
+(``AI_GUARDIAN_<TARGET>_TOKEN``) honoured as a fallback.
 
 The model policy (``allowed_models`` / ``denied_models``, shell-glob patterns) is
 non-secret and lives in the config file; it drives the allowlist checks that flag
@@ -25,6 +28,7 @@ from pathlib import Path
 import yaml
 
 from ai_guardian.governance.paths import ops_home
+from ai_guardian.runtimes import DEFAULT_RUNTIME, RuntimeSpec, get_runtime
 from ai_guardian.secretstore import SecretStoreError, get_secret, has_store
 
 CONFIG_DIR = ops_home()
@@ -69,13 +73,23 @@ def _resolve_secret(name: str) -> str:
 
 @dataclass(frozen=True)
 class TargetConfig:
-    """A connection target for one local-LLM (Ollama) runtime."""
+    """A connection target for one local-LLM runtime.
+
+    ``runtime`` selects the runtime family (``ollama`` default, plus the
+    OpenAI-compatible ``llamacpp`` / ``lmstudio`` / ``vllm``); see
+    :mod:`ai_guardian.runtimes`."""
 
     name: str
     host: str = DEFAULT_HOST
     port: int = DEFAULT_PORT
     scheme: str = "http"
     verify_ssl: bool = False
+    runtime: str = DEFAULT_RUNTIME
+
+    @property
+    def spec(self) -> RuntimeSpec:
+        """The resolved runtime metadata for this target."""
+        return get_runtime(self.runtime)
 
     @property
     def token(self) -> str:
@@ -123,6 +137,22 @@ class AppConfig:
         return True
 
 
+def _build_target(t: dict) -> TargetConfig:
+    """Build one target, validating its runtime and defaulting the port to the
+    runtime's default when unspecified (11434 Ollama / 8080 llama.cpp / 1234 LM
+    Studio / 8000 vLLM). An unknown runtime fails fast (get_runtime raises)."""
+    runtime = t.get("runtime", DEFAULT_RUNTIME)
+    spec = get_runtime(runtime)  # validates; ValueError on unknown
+    return TargetConfig(
+        name=t["name"],
+        host=t.get("host", DEFAULT_HOST),
+        port=t.get("port", spec.default_port),
+        scheme=t.get("scheme", "http"),
+        verify_ssl=t.get("verify_ssl", False),
+        runtime=spec.name,
+    )
+
+
 def load_config(config_path: Path | None = None) -> AppConfig:
     """Load endpoints + model policy from YAML."""
     path = config_path or CONFIG_FILE
@@ -134,14 +164,7 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         raw = yaml.safe_load(f) or {}
 
     targets = tuple(
-        TargetConfig(
-            name=t["name"],
-            host=t.get("host", DEFAULT_HOST),
-            port=t.get("port", DEFAULT_PORT),
-            scheme=t.get("scheme", "http"),
-            verify_ssl=t.get("verify_ssl", False),
-        )
-        for t in raw.get("targets", [{"name": "local"}])
+        _build_target(t) for t in raw.get("targets", [{"name": "local"}])
     )
     return AppConfig(
         targets=targets,

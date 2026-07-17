@@ -75,7 +75,13 @@ def pin_model_digest(model: str, digest: str) -> dict:
 
 
 def model_provenance(conn: Any, config: AppConfig) -> dict:
-    """[READ] Compare each installed model's digest against its pin; flag drift."""
+    """[READ] Compare each installed model's digest against its pin; flag drift.
+
+    Provenance strength varies by runtime: Ollama and llama.cpp expose a digest
+    (content hash / derived ``/props`` identity), so a mismatch is real **DRIFT**.
+    LM Studio / vLLM expose only a model id — no weight identity — so a pinned
+    model with no digest is reported ``unverifiable`` (honestly weaker), never a
+    false DRIFT."""
     from ai_guardian.ops.models import list_models
 
     pins = config.pins
@@ -84,11 +90,16 @@ def model_provenance(conn: Any, config: AppConfig) -> dict:
     drift = 0
     for m in installed:
         pinned = pins.get(m["name"])
-        status = "unpinned"
-        if pinned:
-            status = "ok" if pinned == m["digest"] else "DRIFT"
-            if status == "DRIFT":
-                drift += 1
-        rows.append({"model": m["name"], "currentDigest": m["digest"],
+        current = m["digest"]
+        if not pinned:
+            status = "unpinned"
+        elif not current:
+            status = "unverifiable"  # runtime exposes no digest to compare
+        elif pinned == current:
+            status = "ok"
+        else:
+            status = "DRIFT"
+            drift += 1
+        rows.append({"model": m["name"], "currentDigest": current,
                      "pinnedDigest": pinned, "status": status})
     return {"driftCount": drift, "pinnedCount": len(pins), "models": rows}

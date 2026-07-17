@@ -1,14 +1,15 @@
-"""Connection management for the Ollama local-LLM API.
+"""Connection management for local-LLM runtime APIs.
 
-Thin httpx wrapper over one Ollama runtime (default ``http://localhost:11434``).
-Bearer auth is optional (local Ollama usually runs open); the token is sent only
-when configured. Reads (``/api/tags``, ``/api/ps``, ``/api/show``,
-``/api/version``) and governed writes (``/api/pull``, ``/api/delete``,
-``/api/generate``, ``/api/chat``) go through ``request`` with central error
-translation to ``OllamaApiError``.
+Thin httpx wrapper over one local-LLM runtime. The same client serves Ollama's
+native API and the OpenAI-compatible runtimes (llama.cpp / LM Studio / vLLM);
+only the paths differ (chosen by the ops layer per :mod:`ai_guardian.runtimes`).
+Bearer auth is optional (local runtimes usually run open); the token is sent only
+when configured. All calls go through ``request`` with central error translation
+to ``OllamaApiError`` (name kept for backward compatibility), whose teaching
+messages name the target's runtime.
 
-Ollama does NOT persist a queryable prompt/response log, so *content* observation
-happens by routing a prompt THROUGH ai-guardian (``chat``) — which scans and
+Local runtimes do NOT persist a queryable prompt/response log, so *content*
+observation happens by routing a prompt THROUGH ai-guardian — which scans and
 records it — rather than by reading a server-side history that doesn't exist.
 
 The httpx client is injectable for tests (``client=``); mock responses expose
@@ -22,12 +23,16 @@ from typing import Any
 import httpx
 
 from ai_guardian.config import AppConfig, TargetConfig, load_config
+from ai_guardian.runtimes import runtime_for_conn
 
 _TIMEOUT = 120.0  # generate/chat can be slow on a cold model
 
 
 class OllamaApiError(Exception):
-    """An Ollama API call failed; carries a teaching message + status code."""
+    """A runtime API call failed; carries a teaching message + status code.
+
+    Named ``OllamaApiError`` for backward compatibility — it now covers every
+    supported local-LLM runtime, not just Ollama."""
 
     def __init__(self, message: str, *, status_code: int | None = None, path: str = "") -> None:
         self.status_code = status_code
@@ -35,28 +40,28 @@ class OllamaApiError(Exception):
         super().__init__(message)
 
 
-def _teaching_message(status: int, path: str, body: str) -> str:
+def _teaching_message(status: int, path: str, body: str, label: str) -> str:
     snippet = body[:200].strip()
     if status in (401, 403):
         return (
-            f"Authentication failed ({status}) on {path}. If this Ollama requires a "
+            f"Authentication failed ({status}) on {path}. If this {label} requires a "
             f"token, set it with 'ai-guardian secret set <target>'. {snippet}"
         )
     if status == 404:
         return (
-            f"Not found (404) on {path}. The model may not be pulled — list models "
-            f"first, or 'ai-guardian' pull it. {snippet}"
+            f"Not found (404) on {path}. The model may not be loaded — list models "
+            f"first. {snippet}"
         )
     if status in (500, 502, 503, 504):
         return (
-            f"Ollama server error ({status}) on {path}. The runtime may be loading a "
+            f"{label} server error ({status}) on {path}. The runtime may be loading a "
             f"model or out of memory; retry shortly. {snippet}"
         )
-    return f"Ollama API error ({status}) on {path}. {snippet}"
+    return f"{label} API error ({status}) on {path}. {snippet}"
 
 
 class OllamaConnection:
-    """A session against one Ollama runtime."""
+    """A session against one local-LLM runtime (Ollama or OpenAI-compatible)."""
 
     def __init__(self, target: TargetConfig, client: Any | None = None) -> None:
         self._target = target
@@ -73,17 +78,19 @@ class OllamaConnection:
         return self._target
 
     def request(self, method: str, path: str, **kwargs: Any) -> Any:
+        spec = runtime_for_conn(self)
+        label = spec.display_name
         try:
             resp = self._client.request(method, path, **kwargs)
         except httpx.HTTPError as exc:
             raise OllamaApiError(
-                f"Could not reach Ollama at {self._target.base_url} ({method} {path}): "
-                f"{exc}. Check that Ollama is running (ollama serve) and the host/port.",
+                f"Could not reach {label} at {self._target.base_url} ({method} {path}): "
+                f"{exc}. {spec.start_hint}",
                 path=path,
             ) from exc
         if not (200 <= resp.status_code < 300):
             raise OllamaApiError(
-                _teaching_message(resp.status_code, path, resp.text),
+                _teaching_message(resp.status_code, path, resp.text, label),
                 status_code=resp.status_code, path=path,
             )
         if not resp.content:

@@ -5,12 +5,13 @@ Driven end-to-end through Typer's CliRunner against an isolated
 network call is ever attempted (the closing doctor prompt is declined or the
 doctor function is patched out).
 
-The wizard differs from sibling AIops tools: it targets a local Ollama, so the
+The wizard differs from sibling AIops tools: it targets a local runtime, so the
 bearer token is OPTIONAL (declined by default) and it additionally collects a
 model allow/deny policy.
 
-Prompt order: name, host, port, HTTPS? (confirm), bearer token? (confirm,
-optional getpass), allowed patterns, denied patterns, run doctor? (confirm).
+Prompt order: runtime (choice), name, host, port, HTTPS? (confirm), bearer
+token? (confirm, optional getpass), allowed patterns, denied patterns, run
+doctor? (confirm).
 """
 
 from __future__ import annotations
@@ -54,8 +55,8 @@ def _run_init(answers: list[str]):
     return runner.invoke(app, ["init"], input="".join(a + "\n" for a in answers))
 
 
-# name, host, port (blank = accept default), HTTPS?, token?, allow, deny, doctor?
-HAPPY_ANSWERS = ["", "", "", "n", "n", "", "", "n"]
+# runtime, name, host, port (blank = accept default), HTTPS?, token?, allow, deny, doctor?
+HAPPY_ANSWERS = ["", "", "", "", "n", "n", "", "", "n"]
 
 
 def test_defaults_write_local_target(isolated_home):
@@ -64,7 +65,8 @@ def test_defaults_write_local_target(isolated_home):
 
     raw = yaml.safe_load((isolated_home / "config.yaml").read_text("utf-8"))
     assert raw["targets"] == [
-        {"name": "local", "host": "localhost", "port": 11434, "scheme": "http"}
+        {"name": "local", "runtime": "ollama", "host": "localhost",
+         "port": 11434, "scheme": "http"}
     ]
     # No policy entered and no token — neither may appear in the config.
     assert "allowed_models" not in raw
@@ -73,18 +75,42 @@ def test_defaults_write_local_target(isolated_home):
 
 
 def test_custom_endpoint_and_https(isolated_home):
-    answers = ["edge-1", "10.0.0.5", "8443", "y", "n", "", "", "n"]
+    answers = ["", "edge-1", "10.0.0.5", "8443", "y", "n", "", "", "n"]
     result = _run_init(answers)
     assert result.exit_code == 0, result.output
 
     raw = yaml.safe_load((isolated_home / "config.yaml").read_text("utf-8"))
     assert raw["targets"] == [
-        {"name": "edge-1", "host": "10.0.0.5", "port": 8443, "scheme": "https"}
+        {"name": "edge-1", "runtime": "ollama", "host": "10.0.0.5",
+         "port": 8443, "scheme": "https"}
     ]
 
 
+def test_llamacpp_runtime_defaults_to_its_port(isolated_home):
+    # Pick the llama.cpp runtime; accepting the port default must yield 8080.
+    answers = ["llamacpp", "edge-gguf", "", "", "n", "n", "", "", "n"]
+    result = _run_init(answers)
+    assert result.exit_code == 0, result.output
+
+    raw = yaml.safe_load((isolated_home / "config.yaml").read_text("utf-8"))
+    assert raw["targets"] == [
+        {"name": "edge-gguf", "runtime": "llamacpp", "host": "localhost",
+         "port": 8080, "scheme": "http"}
+    ]
+
+
+def test_lmstudio_and_vllm_default_ports(isolated_home):
+    for runtime, port in (("lmstudio", 1234), ("vllm", 8000)):
+        answers = [runtime, "t", "", "", "n", "n", "", "", "n"]
+        result = _run_init(answers)
+        assert result.exit_code == 0, result.output
+        raw = yaml.safe_load((isolated_home / "config.yaml").read_text("utf-8"))
+        assert raw["targets"][0]["runtime"] == runtime
+        assert raw["targets"][0]["port"] == port
+
+
 def test_model_policy_recorded_from_comma_lists(isolated_home):
-    answers = ["", "", "", "n", "n", "llama3*, mistral*", "evil*", "n"]
+    answers = ["", "", "", "", "n", "n", "llama3*, mistral*", "evil*", "n"]
     result = _run_init(answers)
     assert result.exit_code == 0, result.output
 
@@ -95,7 +121,7 @@ def test_model_policy_recorded_from_comma_lists(isolated_home):
 
 def test_optional_token_lands_encrypted_not_in_config(isolated_home, monkeypatch):
     monkeypatch.setattr("getpass.getpass", lambda prompt="": "bearer-token-xyz")
-    answers = ["", "", "", "n", "y", "", "", "n"]  # opt IN to the bearer token
+    answers = ["", "", "", "", "n", "y", "", "", "n"]  # opt IN to the bearer token
     result = _run_init(answers)
     assert result.exit_code == 0, result.output
     assert "Token stored encrypted" in result.output
@@ -140,7 +166,7 @@ def test_accepting_doctor_prompt_runs_it_and_propagates_exit(isolated_home, monk
         return 1  # unhealthy — init must exit with the doctor's code
 
     monkeypatch.setattr("ai_guardian.doctor.run_doctor", _fake_doctor)
-    answers = ["", "", "", "n", "n", "", "", "y"]
+    answers = ["", "", "", "", "n", "n", "", "", "y"]
     result = _run_init(answers)
     assert calls == [True]
     assert result.exit_code == 1

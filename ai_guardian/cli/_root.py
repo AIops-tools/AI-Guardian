@@ -11,6 +11,7 @@ from ai_guardian.cli.init import init_cmd
 from ai_guardian.cli.model import model_app
 from ai_guardian.cli.overview import overview_cmd
 from ai_guardian.cli.secret import secret_app
+from ai_guardian.cli.undo import undo_app
 
 app = typer.Typer(
     name="ai-guardian",
@@ -22,6 +23,7 @@ app = typer.Typer(
 app.add_typer(model_app, name="model")
 app.add_typer(guard_app, name="guard")
 app.add_typer(secret_app, name="secret")
+app.add_typer(undo_app, name="undo")
 app.command("init")(init_cmd)
 app.command("overview")(overview_cmd)
 app.command("doctor")(doctor_cmd)

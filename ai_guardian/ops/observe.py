@@ -1,11 +1,13 @@
 """Route-through content governance + usage/anomaly reporting.
 
-Ollama keeps no prompt history, so *content* is observed by routing a prompt
-THROUGH the guardian: ``guarded_generate`` / ``observe_chat`` scan the prompt
-(secrets / PII / code / jailbreak), check the model against policy, decide
+Local runtimes keep no prompt history, so *content* is observed by routing a
+prompt THROUGH the guardian: ``guarded_generate`` / ``observe_chat`` scan the
+prompt (secrets / PII / code / jailbreak), check the model against policy, decide
 block-or-pass by risk band, record the interaction to ai-guardian's own usage
-log, and only then (if allowed) call Ollama. The raw prompt is never stored —
-only its length and the redacted findings.
+log, and only then (if allowed) call the runtime — Ollama's native API or an
+OpenAI-compatible ``/v1/chat/completions`` (llama.cpp / LM Studio / vLLM),
+dispatched on the target's runtime. The raw prompt is never stored — only its
+length and the redacted findings.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from typing import Any
 from ai_guardian import scanner
 from ai_guardian.config import AppConfig
 from ai_guardian.ops._util import s
+from ai_guardian.runtimes import runtime_for_conn
 
 _GENERATE = "/api/generate"
 _CHAT = "/api/chat"
@@ -61,8 +64,13 @@ def _observe(conn: Any, config: AppConfig, store: Any, *, model: str, text: str,
 def guarded_generate(conn: Any, config: AppConfig, store: Any, model: str, prompt: str,
                      agent: str = "unknown", user: str = "",
                      block_threshold: str = "high") -> dict:
-    """[WRITE] Scan + policy-gate a /api/generate prompt, record it, then run if allowed."""
+    """[WRITE] Scan + policy-gate a generate prompt, record it, then run if allowed."""
     def _call() -> str:
+        spec = runtime_for_conn(conn)
+        if spec.is_openai_compat:
+            from ai_guardian.ops import openai_compat as oc
+
+            return oc.generate_completion(conn, model, prompt)
         resp = conn.post(_GENERATE, json={"model": model, "prompt": prompt, "stream": False})
         return s((resp or {}).get("response"), 4000) if isinstance(resp, dict) else ""
 
@@ -78,6 +86,11 @@ def observe_chat(conn: Any, config: AppConfig, store: Any, model: str, messages:
                      if isinstance(m, dict))
 
     def _call() -> str:
+        spec = runtime_for_conn(conn)
+        if spec.is_openai_compat:
+            from ai_guardian.ops import openai_compat as oc
+
+            return oc.chat_completion(conn, model, messages)
         resp = conn.post(_CHAT, json={"model": model, "messages": messages, "stream": False})
         msg = (resp or {}).get("message") if isinstance(resp, dict) else None
         return s((msg or {}).get("content"), 4000) if isinstance(msg, dict) else ""

@@ -4,15 +4,42 @@
 
 > **Disclaimer**: Community-maintained open-source project. **Not affiliated with, endorsed by, or sponsored by Ollama, IGEL, or any AI-security vendor.** Product and trademark names belong to their owners. MIT licensed.
 
-Governed **observability + governance for on-endpoint local LLMs** (Ollama). It
-lets you **observe + audit what your local models are actually fed, and gate
-what leaves in a prompt** — the complement to **IGEL AI Armor**. AI Armor governs
-*whether* a local model may run on the endpoint; ai-guardian records *what it did*
-and gates *what goes into the prompt* (secrets, PII, source, jailbreaks) plus
-*which model* may serve it. Self-contained: it talks to Ollama's REST API
-(default `http://localhost:11434`, usually no auth) and needs nothing beyond
-`httpx` and the MCP SDK. **Preview — mock-validated only; v0.1 route-through
-content governance, with a transparent capture proxy on the v0.2 roadmap.**
+Governed **observability + governance for on-endpoint local LLMs**. It lets you
+**observe + audit what your local models are actually fed, and gate what leaves in
+a prompt** — the complement to **IGEL AI Armor**. AI Armor governs *whether* a
+local model may run on the endpoint; ai-guardian records *what it did* and gates
+*what goes into the prompt* (secrets, PII, source, jailbreaks) plus *which model*
+may serve it. Self-contained: it talks to each runtime's REST API and needs
+nothing beyond `httpx` and the MCP SDK. **Preview — mock-validated only; v0.1
+route-through content governance, with a transparent capture proxy on the v0.2
+roadmap.**
+
+### Supported runtimes
+
+One tool, several **local** runtimes, selected per target by a `runtime` field in
+`config.yaml` (the `init` wizard asks). Ollama uses its native API; the other three
+share one OpenAI-compatible transport (`/v1/models` + `/v1/chat/completions`).
+
+| Runtime | `runtime` | Default port | List / policy | Scan + route-through guard | Provenance |
+|---------|-----------|:---:|:---:|:---:|-----------|
+| **Ollama** | `ollama` | 11434 | ✅ | ✅ | **digest** (content hash — strong) |
+| **llama.cpp** (`llama-server`) | `llamacpp` | 8080 | ✅ | ✅ | **props** — `/props` model path/size → pinnable id |
+| **LM Studio** | `lmstudio` | 1234 | ✅ | ✅ | **id only** — weaker; pins report `unverifiable` |
+| **vLLM** (local single-node) | `vllm` | 8000 | ✅ | ✅ | **id only** — weaker; pins report `unverifiable` |
+
+The allow/deny model policy, the deterministic prompt scanner, the route-through
+guard (`guarded_generate` / `observe_chat`), provenance drift, and `doctor` work
+across **all** runtimes. **Model lifecycle writes** (`pull` / `remove` / `unload`)
+are Ollama-only — the OpenAI-compatible servers load a model at startup and expose
+no lifecycle endpoint, so those writes are refused with a clear message.
+
+Provenance honesty: only Ollama (content digest) and llama.cpp (a `/props`-derived
+path/size identity) expose something to pin. LM Studio and vLLM expose only a model
+**id**, so a pinned digest is reported `unverifiable` rather than a false `DRIFT`.
+
+> **vLLM here is a LOCAL endpoint-guarding use case.** GPU inference-**cluster**
+> operations (autoscale, drain, Ray Serve/Jobs, model lifecycle at fleet scale)
+> belong to a different tool in the line — **GPU cluster ops → inference-aiops**.
 
 ## What it does
 
@@ -132,8 +159,10 @@ Every MCP tool passes through the bundled `@governed_tool` harness:
 
 ## Supported scope + limitations (preview)
 
-- **Scope**: on-endpoint **local LLMs via Ollama** — single-endpoint local-LLM
-  observability + content governance. Not GPU inference-cluster ops.
+- **Scope**: on-endpoint **local LLMs** — Ollama plus the OpenAI-compatible
+  llama.cpp / LM Studio / local single-node vLLM — single-endpoint local-LLM
+  observability + content governance. Not GPU inference-cluster ops
+  (→ inference-aiops).
 - **v0.1** = passive inventory/state auditing **plus opt-in route-through content
   governance**. A **transparent capture proxy** for other clients' traffic is
   **v0.2 roadmap**, not v0.1.
