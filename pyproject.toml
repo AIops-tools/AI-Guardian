@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-guardian-aiops"
-version = "0.3.0"
+version = "0.4.0"
 description = "Governed observability + governance for on-endpoint local LLMs (Ollama): model inventory/provenance, a deterministic secrets/PII/jailbreak prompt scanner, allow/deny policy, and route-through guarding — the complement to IGEL AI Armor, with a built-in governance harness (audit, budget, undo, risk tiers)"
 readme = "README.md"
 license = "MIT"

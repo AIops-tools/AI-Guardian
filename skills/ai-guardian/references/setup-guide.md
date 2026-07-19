@@ -1,7 +1,7 @@
 # ai-guardian setup & security guide
 
-> Preview / mock-only — the scanner / policy / risk-band are deterministic
-> offline logic; the Ollama API paths need live verification.
+> The scanner / policy / risk-band are deterministic offline logic; the Ollama
+> API paths need live verification (see `docs/VERIFICATION.md`).
 
 ## 1. Install
 

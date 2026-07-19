@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from ai_guardian.config import AppConfig
-from ai_guardian.ops._util import as_list, as_obj, s
+from ai_guardian.ops._util import as_list, as_obj, opt_s, s
 from ai_guardian.runtimes import runtime_for_conn
 
 _TAGS = "/api/tags"
@@ -32,12 +32,12 @@ def _norm_model(raw: dict, config: AppConfig) -> dict:
     name = s(raw.get("name") or raw.get("model"))
     return {
         "name": name,
-        "digest": s(raw.get("digest"), 80),
+        "digest": opt_s(raw.get("digest"), 80),
         "sizeBytes": raw.get("size"),
-        "family": s(details.get("family")),
-        "parameterSize": s(details.get("parameter_size"), 32),
-        "quantization": s(details.get("quantization_level"), 32),
-        "modifiedAt": s(raw.get("modified_at"), 40),
+        "family": opt_s(details.get("family")),
+        "parameterSize": opt_s(details.get("parameter_size"), 32),
+        "quantization": opt_s(details.get("quantization_level"), 32),
+        "modifiedAt": opt_s(raw.get("modified_at"), 40),
         "allowed": config.model_allowed(name),
     }
 
@@ -64,9 +64,9 @@ def running_models(conn: Any, config: AppConfig) -> list[dict]:
         name = s(r.get("name") or r.get("model"))
         rows.append({
             "name": name,
-            "digest": s(r.get("digest"), 80),
+            "digest": opt_s(r.get("digest"), 80),
             "sizeVramBytes": r.get("size_vram"),
-            "expiresAt": s(r.get("expires_at"), 40),
+            "expiresAt": opt_s(r.get("expires_at"), 40),
             "allowed": config.model_allowed(name),
         })
     return rows
@@ -83,10 +83,10 @@ def model_details(conn: Any, model: str) -> dict:
     details = raw.get("details") or {}
     return {
         "model": s(model),
-        "license": s(raw.get("license"), 400),
-        "family": s(details.get("family")),
-        "parameterSize": s(details.get("parameter_size"), 32),
-        "quantization": s(details.get("quantization_level"), 32),
+        "license": opt_s(raw.get("license"), 400),
+        "family": opt_s(details.get("family")),
+        "parameterSize": opt_s(details.get("parameter_size"), 32),
+        "quantization": opt_s(details.get("quantization_level"), 32),
         "capabilities": [s(c, 32) for c in (raw.get("capabilities") or [])],
     }
 
@@ -100,7 +100,7 @@ def server_status(conn: Any) -> dict:
         return oc.server_status(conn, spec)
     try:
         info = as_obj(conn.get(_VERSION))
-        return {"reachable": True, "version": s(info.get("version"), 32)}
+        return {"reachable": True, "version": opt_s(info.get("version"), 32)}
     except Exception as exc:  # noqa: BLE001 — status, not a crash
         return {"reachable": False, "error": s(exc, 200)}
 

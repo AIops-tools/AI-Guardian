@@ -37,6 +37,11 @@ def usage_events(
         allowed: True = only allowed calls; False = only blocked.
         since: ISO start timestamp.
         limit: Max rows.
+
+    Returns ``{"events": [...], "count": N, "returned": N, "limit": L,
+    "truncated": bool}``. When ``truncated`` is true more prompts were observed
+    than were returned — raise the limit or narrow the filters. Never conclude
+    "no risky prompts were observed" from a truncated result.
     """
     return ops.usage_events(_get_store(), model=model, risk_level=risk_level,
                             allowed=allowed, since=since, limit=limit)

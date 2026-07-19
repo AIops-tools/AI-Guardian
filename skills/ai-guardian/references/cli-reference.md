@@ -1,6 +1,6 @@
 # ai-guardian CLI reference
 
-> Preview / mock-only. The CLI is a convenience subset; the full 18-tool surface
+> The CLI is a convenience subset; the full 20-tool surface
 > is via MCP (`ai-guardian mcp`). Works zero-config against a local Ollama
 > (`http://localhost:11434`).
 

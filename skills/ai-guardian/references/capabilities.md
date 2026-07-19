@@ -1,6 +1,6 @@
 # ai-guardian capabilities
 
-> Preview / mock-only. 18 MCP tools (10 read, 8 write) over Ollama's REST API
+> 20 MCP tools (10 read, 8 write, 2 undo) over Ollama's REST API
 > (default `http://localhost:11434`, usually no auth). The scanner / policy /
 > risk-band are pure deterministic offline logic; the Ollama paths need live
 > verification.

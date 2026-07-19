@@ -16,7 +16,7 @@ from typing import Any
 
 from ai_guardian import scanner
 from ai_guardian.config import AppConfig
-from ai_guardian.ops._util import s
+from ai_guardian.ops._util import opt_s, s
 from ai_guardian.runtimes import runtime_for_conn
 
 _GENERATE = "/api/generate"
@@ -65,14 +65,16 @@ def guarded_generate(conn: Any, config: AppConfig, store: Any, model: str, promp
                      agent: str = "unknown", user: str = "",
                      block_threshold: str = "high") -> dict:
     """[WRITE] Scan + policy-gate a generate prompt, record it, then run if allowed."""
-    def _call() -> str:
+    def _call() -> str | None:
         spec = runtime_for_conn(conn)
         if spec.is_openai_compat:
             from ai_guardian.ops import openai_compat as oc
 
             return oc.generate_completion(conn, model, prompt)
         resp = conn.post(_GENERATE, json={"model": model, "prompt": prompt, "stream": False})
-        return s((resp or {}).get("response"), 4000) if isinstance(resp, dict) else ""
+        # None = the runtime returned no response field at all, which is a
+        # different event from a model that answered with an empty string.
+        return opt_s((resp or {}).get("response"), 4000) if isinstance(resp, dict) else None
 
     return _observe(conn, config, store, model=model, text=prompt, agent=agent,
                     user=user, block_threshold=block_threshold, call=_call)
@@ -85,7 +87,7 @@ def observe_chat(conn: Any, config: AppConfig, store: Any, model: str, messages:
     text = "\n".join(s(m.get("content"), 4000) for m in (messages or [])
                      if isinstance(m, dict))
 
-    def _call() -> str:
+    def _call() -> str | None:
         spec = runtime_for_conn(conn)
         if spec.is_openai_compat:
             from ai_guardian.ops import openai_compat as oc
@@ -93,7 +95,7 @@ def observe_chat(conn: Any, config: AppConfig, store: Any, model: str, messages:
             return oc.chat_completion(conn, model, messages)
         resp = conn.post(_CHAT, json={"model": model, "messages": messages, "stream": False})
         msg = (resp or {}).get("message") if isinstance(resp, dict) else None
-        return s((msg or {}).get("content"), 4000) if isinstance(msg, dict) else ""
+        return opt_s((msg or {}).get("content"), 4000) if isinstance(msg, dict) else None
 
     return _observe(conn, config, store, model=model, text=text, agent=agent,
                     user=user, block_threshold=block_threshold, call=_call)
@@ -102,10 +104,29 @@ def observe_chat(conn: Any, config: AppConfig, store: Any, model: str, messages:
 def usage_events(store: Any, model: str | None = None, risk_level: str | None = None,
                  allowed: bool | None = None, since: str | None = None,
                  limit: int = 100) -> dict:
-    """[READ] Query ai-guardian's observed-usage log."""
+    """[READ] Query ai-guardian's observed-usage log.
+
+    Returns an envelope rather than a bare count + list::
+
+        {"events": [...], "count": N, "returned": N, "limit": L, "truncated": true}
+
+    One row past the limit is fetched so ``truncated`` is *measured* rather than
+    guessed from the returned length happening to equal the limit — the
+    coincidence a smaller model reads as "that is every prompt observed". This
+    matters here: an under-reported usage log looks like an absence of risky
+    prompts.
+    """
+    requested = max(int(limit), 1)
     rows = store.query(model=model, risk_level=risk_level, allowed=allowed,
-                       since=since, limit=limit)
-    return {"count": len(rows), "events": rows}
+                       since=since, limit=requested + 1)
+    kept = rows[:requested]
+    return {
+        "events": kept,
+        "count": len(kept),
+        "returned": len(kept),
+        "limit": requested,
+        "truncated": len(rows) > requested,
+    }
 
 
 def anomaly_report(conn: Any, config: AppConfig, store: Any) -> dict:

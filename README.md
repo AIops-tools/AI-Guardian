@@ -1,6 +1,6 @@
 <!-- mcp-name: io.github.AIops-tools/ai-guardian -->
 
-# AI Guardian (preview)
+# AI Guardian
 
 > **Disclaimer**: Community-maintained open-source project. **Not affiliated with, endorsed by, or sponsored by Ollama, IGEL, or any AI-security vendor.** Product and trademark names belong to their owners. MIT licensed.
 
@@ -10,9 +10,8 @@ a prompt** — the complement to **IGEL AI Armor**. AI Armor governs *whether* a
 local model may run on the endpoint; ai-guardian records *what it did* and gates
 *what goes into the prompt* (secrets, PII, source, jailbreaks) plus *which model*
 may serve it. Self-contained: it talks to each runtime's REST API and needs
-nothing beyond `httpx` and the MCP SDK. **Preview — mock-validated only; v0.1
-route-through content governance, with a transparent capture proxy on the v0.2
-roadmap.**
+nothing beyond `httpx` and the MCP SDK. v0.1 provides opt-in route-through
+content governance; a transparent capture proxy is on the v0.2 roadmap.
 
 ### Supported runtimes
 
@@ -84,7 +83,47 @@ is client-supplied on every request. So ai-guardian observes on two fronts:
 - **Highly self-testable** — Ollama is free + local for the API parts; the
   scanner, policy, and risk-band are pure deterministic offline logic.
 
-## Capability matrix (18 MCP tools)
+## Security: read-only mode
+
+This tool is meant to be handed to an AI agent, so its safety story is enforced
+by the server rather than requested in a prompt:
+
+```bash
+export AI_GUARDIAN_READ_ONLY=1
+```
+
+With that set, the **9 write tools are never registered**. An MCP client
+lists **11 tools instead of 20** — the writes are not hidden, not
+gated behind a flag, and not merely refused when called. They are absent from
+the session. A model cannot invoke a tool it was never offered, and cannot be
+argued into one.
+
+That distinction is the whole point. A tool that exists but refuses still invites
+retry loops and "I'll describe the call instead" behaviour from smaller models,
+and it leaves a reviewer trusting a promise. An absent tool is a fact you can
+check: connect, list the tools, and see that the writes are not there.
+
+Enforcement is two layers deep, so the switch cannot be sidestepped by changing
+entry point:
+
+| Layer | What it does | Covers |
+|---|---|---|
+| `@governed_tool` harness | refuses every non-read operation outright | MCP, CLI, and in-process callers |
+| MCP registration | write tools are removed from `list_tools()` | anything speaking MCP |
+
+Read operations are unaffected, and every call is still audited to
+`~/.ai-guardian/audit.db`.
+
+> The read/write split is derived from each tool's declared `risk_level`, and a
+> test asserts that this never disagrees with the `[READ]`/`[WRITE]` tag in the
+> tool's own documentation — so a write can't quietly present itself as a read.
+
+Running a smaller / local model? See
+[agent-guardrails.md](skills/ai-guardian/references/agent-guardrails.md) — it lists
+the guardrails this tool now enforces for you (so you don't spend prompt budget
+restating them) and gives a ready-made system prompt for what's left.
+
+## Capability matrix (20 MCP tools)
 
 ### Reads (10)
 
@@ -114,6 +153,13 @@ is client-supplied on every request. So ai-guardian observes on two fronts:
 | `guarded_generate` | medium | the route-through guard: scan + policy-gate + record + run-if-allowed |
 | `observe_chat` | medium | same, for `/api/chat` messages |
 
+### Undo (2)
+
+| Tool | Risk | What it does |
+|------|:----:|--------------|
+| `undo_list` | low | list recorded undo tokens |
+| `undo_apply` | medium | replay a recorded inverse descriptor |
+
 Risk-band gating: `guarded_generate` / `observe_chat` **block** when the prompt's
 risk band `>= block_threshold` (default `high`) **or** the model is disallowed.
 Blocked calls never reach Ollama and are recorded as blocked in the usage log.
@@ -135,7 +181,7 @@ MCP:
 guarded_generate(model="llama3.2:3b", prompt="…", block_threshold="high")
 ```
 
-Run as an MCP server (stdio) — the full 18-tool surface; the CLI is a convenience
+Run as an MCP server (stdio) — the full 20-tool surface; the CLI is a convenience
 subset:
 
 ```bash
@@ -157,7 +203,7 @@ Every MCP tool passes through the bundled `@governed_tool` harness:
   `AI_GUARDIAN_AUDIT_RATIONALE`).
 - **Undo recording** — reversible writes record an inverse descriptor.
 
-## Supported scope + limitations (preview)
+## Supported scope + limitations
 
 - **Scope**: on-endpoint **local LLMs** — Ollama plus the OpenAI-compatible
   llama.cpp / LM Studio / local single-node vLLM — single-endpoint local-LLM
@@ -168,8 +214,14 @@ Every MCP tool passes through the bundled `@governed_tool` harness:
   **v0.2 roadmap**, not v0.1.
 - **IGEL AI Armor interop** is **doc-level** positioning today (complementary
   roles), not a wired integration.
-- **Preview / mock-only** — the scanner, policy, and risk-band are exercised
-  offline; the Ollama API paths are the fastest live check (`ai-guardian doctor`).
+- **Validation status** — the scanner, policy, and risk-band are pure
+  deterministic offline logic and are exercised as such by the test suite. The
+  core Ollama route-through (real generation + policy deny + undo capture) was
+  exercised against a live Ollama 0.24.0 on 2026-07-13; the rest of the Ollama
+  surface and the OpenAI-compatible dialects (llama.cpp / LM Studio / local
+  vLLM) are still covered by mocked responses only. `ai-guardian doctor` is the
+  fastest live check; see [`docs/VERIFICATION.md`](docs/VERIFICATION.md) for
+  exactly which boxes are ticked.
 
 ## Missing a capability?
 

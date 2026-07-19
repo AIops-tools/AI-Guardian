@@ -76,7 +76,7 @@ def tool_errors(shape: str = "dict") -> Callable:
 mcp = FastMCP(
     "ai-guardian",
     instructions=(
-        "On-endpoint local-LLM (Ollama) observability + governance (preview) — the "
+        "On-endpoint local-LLM (Ollama) observability + governance — the "
         "complement to IGEL AI Armor: Armor governs WHETHER a model runs; this "
         "records WHAT it did. Inventory + runtime state (list_models, "
         "running_models, model_details, vram_usage) annotated with the allow/deny "

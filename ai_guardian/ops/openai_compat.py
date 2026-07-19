@@ -23,7 +23,7 @@ import hashlib
 from typing import Any
 
 from ai_guardian.config import AppConfig
-from ai_guardian.ops._util import s
+from ai_guardian.ops._util import opt_s, s
 from ai_guardian.runtimes import PROV_PROPS, RuntimeSpec
 
 _MODELS = "/v1/models"
@@ -69,12 +69,14 @@ def _norm_model(raw: dict, config: AppConfig, digest: str, size: int | None) -> 
     name = s(raw.get("id") or raw.get("model") or raw.get("name"))
     return {
         "name": name,
-        "digest": s(digest, 80),
+        "digest": opt_s(digest, 80) or None,
         "sizeBytes": raw.get("size") or size,
-        "family": s(raw.get("owned_by")),
-        "parameterSize": "",
-        "quantization": "",
-        "modifiedAt": s(raw.get("created"), 40),
+        "family": opt_s(raw.get("owned_by")),
+        # This API carries no parameter/quantization block at all — null says
+        # "the runtime cannot tell you", which "" does not.
+        "parameterSize": None,
+        "quantization": None,
+        "modifiedAt": opt_s(raw.get("created"), 40),
         "allowed": config.model_allowed(name),
     }
 
@@ -99,7 +101,7 @@ def running_models(conn: Any, config: AppConfig, spec: RuntimeSpec) -> list[dict
             "name": m["name"],
             "digest": m["digest"],
             "sizeVramBytes": None,
-            "expiresAt": "",
+            "expiresAt": None,  # these servers hold a model for the process lifetime
             "allowed": m["allowed"],
         }
         for m in list_models(conn, config, spec)
@@ -116,12 +118,13 @@ def model_details(conn: Any, model: str, spec: RuntimeSpec) -> dict:
     digest, size = _props_identity(props) if props else ("", None)
     return {
         "model": s(model),
-        "license": "",
-        "family": "",
-        "parameterSize": "",
-        "quantization": "",
+        # Absent from the OpenAI API, not empty in the model: null, never "".
+        "license": None,
+        "family": None,
+        "parameterSize": None,
+        "quantization": None,
         "capabilities": [],
-        "digest": s(digest, 80),
+        "digest": opt_s(digest, 80) or None,
         "sizeBytes": size,
         "runtime": spec.name,
     }
@@ -134,23 +137,28 @@ def server_status(conn: Any, spec: RuntimeSpec) -> dict:
     liveness probe. No version string is exposed, so ``version`` is empty."""
     try:
         conn.get(spec.health_path)
-        return {"reachable": True, "version": ""}
+        # No version string is exposed by this API — unknown, not blank.
+        return {"reachable": True, "version": None}
     except Exception as exc:  # noqa: BLE001 — status, not a crash
         return {"reachable": False, "error": s(exc, 200)}
 
 
-def chat_completion(conn: Any, model: str, messages: list[dict]) -> str:
-    """POST ``/v1/chat/completions`` → the first choice's message content."""
+def chat_completion(conn: Any, model: str, messages: list[dict]) -> str | None:
+    """POST ``/v1/chat/completions`` → the first choice's message content.
+
+    ``None`` when the server returned no usable choice at all — distinct from a
+    model that answered with an empty string.
+    """
     resp = conn.post(_CHAT, json={"model": model, "messages": messages, "stream": False})
     if not isinstance(resp, dict):
-        return ""
+        return None
     choices = resp.get("choices") or []
     if not choices or not isinstance(choices[0], dict):
-        return ""
+        return None
     msg = choices[0].get("message")
-    return s((msg or {}).get("content"), 4000) if isinstance(msg, dict) else ""
+    return opt_s((msg or {}).get("content"), 4000) if isinstance(msg, dict) else None
 
 
-def generate_completion(conn: Any, model: str, prompt: str) -> str:
+def generate_completion(conn: Any, model: str, prompt: str) -> str | None:
     """A single-turn generate mapped onto the universal chat endpoint."""
     return chat_completion(conn, model, [{"role": "user", "content": prompt}])

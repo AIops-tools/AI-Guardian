@@ -163,7 +163,7 @@ def test_id_only_runtimes_expose_no_digest():
     for runtime in ("lmstudio", "vllm"):
         conn = _conn(runtime, {"/v1/models": _V1_MODELS})
         rows = model_ops.list_models(conn, AppConfig())
-        assert all(r["digest"] == "" for r in rows)
+        assert all(r["digest"] is None for r in rows)
 
 
 # ── provenance drift: with digest (llama.cpp) and without (id-only) ────────

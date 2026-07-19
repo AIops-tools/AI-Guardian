@@ -50,13 +50,18 @@ def test_model_details_llamacpp_enriches_from_props():
     assert out["digest"].startswith("gguf:")
     assert out["sizeBytes"] == 2_100_000_000
     assert out["runtime"] == "llamacpp"
-    assert out["license"] == ""  # not fabricated
+    assert out["license"] is None  # absent from this API, not blank in the model
 
 
-def test_model_details_id_only_leaves_digest_empty():
+def test_model_details_id_only_reports_no_digest_as_null():
+    """An id-only runtime cannot identify the weights — that is absence, not "".
+
+    model_provenance reads a null digest as `unverifiable`, which is the honest
+    verdict; a blank string would read as "we looked and found nothing".
+    """
     conn = _Conn({})
     out = oc.model_details(conn, "mixtral", _VLLM)
-    assert out["digest"] == "" and out["sizeBytes"] is None
+    assert out["digest"] is None and out["sizeBytes"] is None
 
 
 def test_props_identity_uses_nested_generation_settings():
@@ -94,12 +99,19 @@ def test_chat_completion_parses_first_choice():
 
 
 def test_chat_completion_defensive_on_empty_choices():
+    """No usable choice is "the server returned nothing", not "the model said ''"."""
     conn = _Conn({"/v1/chat/completions": {"choices": []}})
-    assert oc.chat_completion(conn, "m", []) == ""
+    assert oc.chat_completion(conn, "m", []) is None
 
 
 def test_chat_completion_defensive_on_non_dict_response():
     conn = _Conn({"/v1/chat/completions": "not-a-dict"})
+    assert oc.chat_completion(conn, "m", []) is None
+
+
+def test_chat_completion_preserves_a_genuinely_empty_answer():
+    """A model that really did answer with '' is a different event from silence."""
+    conn = _Conn({"/v1/chat/completions": {"choices": [{"message": {"content": ""}}]}})
     assert oc.chat_completion(conn, "m", []) == ""
 
 
