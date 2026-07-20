@@ -271,7 +271,7 @@ def test_lifecycle_writes_refused_for_openai_compat(runtime):
     conn = _conn(runtime, {})
     for fn in (
         lambda: model_ops.pull_model(conn, AppConfig(), "m"),
-        lambda: model_ops.remove_model(conn, "m"),
+        lambda: model_ops.remove_model(conn, AppConfig(), "m"),
         lambda: model_ops.unload_model(conn, "m"),
     ):
         with pytest.raises(ValueError, match="does not support"):

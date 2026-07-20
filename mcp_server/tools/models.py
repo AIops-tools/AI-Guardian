@@ -8,9 +8,17 @@ from mcp_server._shared import _get_config, _get_connection, mcp, tool_errors
 
 
 def _remove_undo(params: dict[str, Any], result: Any) -> Optional[dict]:
-    """Inverse of remove_model: re-pull the deleted model."""
+    """Inverse of remove_model: re-pull the deleted model — when policy permits.
+
+    pull_model refuses any model the allow/deny policy rejects, so for a denied
+    model this descriptor would be recorded, look valid in undo_list, and then
+    fail at undo_apply. remove_model reports that verdict as ``reversible``;
+    honour it and record nothing rather than promise a replay that cannot run.
+    """
     if not isinstance(result, dict):
         return None
+    if result.get("reversible") is False:
+        return None  # policy-denied model — a re-pull would be refused
     model = (result.get("priorState") or {}).get("model") or params.get("model")
     if not model:
         return None
@@ -104,15 +112,24 @@ def remove_model(model: str, dry_run: bool = False, target: Optional[str] = None
     Captures the model's manifest so the harness records an undo (re-pull).
     Requires an approver (set AI_GUARDIAN_AUDIT_APPROVED_BY).
 
+    An undo is recorded only when the allow/deny policy would permit re-pulling
+    the model. For a denied one the result says reversible=false and explains
+    why, rather than recording a re-pull that undo_apply is bound to refuse.
+    The dry-run preview carries the same verdict, so the caller learns it before
+    the deletion rather than after.
+
     Args:
         model: Model name to delete.
         dry_run: If True, return what WOULD be deleted without deleting.
         target: Ollama target name from config; omit for the default.
     """
     conn = _get_connection(target)
+    config = _get_config()
     if dry_run:
-        return {"dryRun": True, "wouldRemove": {"model": model}}
-    return ops.remove_model(conn, model)
+        return {"dryRun": True,
+                "wouldRemove": {"model": model},
+                "reversible": bool(config.model_allowed(model))}
+    return ops.remove_model(conn, config, model)
 
 
 @mcp.tool()

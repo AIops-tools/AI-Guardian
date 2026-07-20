@@ -50,8 +50,12 @@ def test_cli_model_remove_dry_run_makes_no_call_and_no_audit(gov_home, monkeypat
     result = CliRunner().invoke(app, ["model", "remove", "llama3.2:3b", "--dry-run"])
     assert result.exit_code == 0
     assert "DRY-RUN" in result.output
-    assert fake.calls == []
-    assert not (gov_home / "audit.db").exists()
+    assert fake.calls == [], "a dry-run must never touch the runtime"
+    # The preview now routes through the governed twin so it can report whether
+    # an undo will be recorded, which also lands an audit row. Not new behaviour
+    # but the removal of an inconsistency: MCP dry-runs have always audited, the
+    # CLI was the outlier. The invariant that matters is above — no API call.
+    assert _audit_tools(gov_home / "audit.db") == ["remove_model"]
 
 
 @pytest.mark.unit

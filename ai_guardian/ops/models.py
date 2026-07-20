@@ -7,7 +7,11 @@ target's runtime. Writes (pull / remove / unload) are Ollama-native; the
 OpenAI-compatible servers load a model at startup and expose no lifecycle
 endpoint, so those writes are refused for them with a clear message.
 ``remove_model`` captures the model's manifest before deleting so the harness can
-record an undo (re-pull) descriptor.
+record an undo (re-pull) descriptor — but ONLY when the policy would actually
+allow that re-pull. For a denied model it records no undo and says so, because
+``pull_model`` refuses anything the denylist covers: an undo descriptor this
+tool's own policy engine will reject is an audit trail claiming a reversibility
+that does not exist.
 """
 
 from __future__ import annotations
@@ -156,18 +160,41 @@ def pull_model(conn: Any, config: AppConfig, model: str) -> dict:
     return {"action": "pull_model", "model": s(model)}
 
 
-def remove_model(conn: Any, model: str) -> dict:
-    """[WRITE][high] Delete a local model — captures its manifest for undo (re-pull)."""
+def remove_model(conn: Any, config: AppConfig, model: str) -> dict:
+    """[WRITE][high] Delete a local model — captures its manifest for undo (re-pull).
+
+    The recorded undo is a ``pull_model`` of the same name, and ``pull_model``
+    refuses anything ``config.model_allowed`` rejects. So for a denied model the
+    inverse this write would record is one THIS TOOL'S OWN POLICY will refuse to
+    replay — and the natural containment sequence produces exactly that:
+    ``set_denylist(["llama3*"])`` then ``remove_model("llama3")``.
+
+    Rather than record an undo that fails at ``undo_apply``, the result reports
+    ``reversible: false`` with the reason, and ``_remove_undo`` records nothing.
+    An audit trail that claims a reversibility it does not have is worse than
+    one that says plainly there is none: the first is discovered during an
+    incident, the second before it.
+    """
     _require_lifecycle(conn, "remove_model")
+    reversible = bool(config.model_allowed(model))
     prior = {}
     try:
         prior = model_details(conn, model)
     except Exception:  # noqa: BLE001 — best-effort manifest capture
         prior = {"model": s(model)}
     conn.delete(_DELETE, json={"model": model})
-    return {"action": "remove_model", "model": s(model),
-            "priorState": {"model": s(model), "license": prior.get("license"),
-                           "family": prior.get("family")}}
+    result = {"action": "remove_model", "model": s(model),
+              "reversible": reversible,
+              "priorState": {"model": s(model), "license": prior.get("license"),
+                             "family": prior.get("family")}}
+    if not reversible:
+        result["note"] = (
+            "Policy-denied model: no undo was recorded, because the inverse "
+            "(pull_model) would be refused by this tool's own allow/deny policy. "
+            "Allow the model again before removing it if you need to be able to "
+            "re-pull, or re-pull it out-of-band with 'ollama pull'."
+        )
+    return result
 
 
 def unload_model(conn: Any, model: str) -> dict:

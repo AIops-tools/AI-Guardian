@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.0 — 2026-07-20
+
+### Fixed
+- **`remove_model` no longer records an undo it knows will be refused.** Its inverse is `pull_model`, which the tool's own policy engine rejects for a denied model — so the natural sequence (deny a model, then remove it) left a token that looked valid in `undo_list` and failed at `undo_apply`.
+- Harness: a write whose response is lost is audited `status=unknown`, not `error` — it may have taken effect. Undo tokens gain `effectVerified` (undo.db migrated in place).
+- Harness: a dry-run no longer records an undo token, and no longer requires a named approver. Guards now run on the preview path.
+- Truncated strings end in an ellipsis instead of being cut silently; error messages are capped at 800 chars, not 300.
+
+See RELEASE_NOTES.md for the full detail.
+
 ## v0.3.0 — 2026-07-17
 
 ### Added

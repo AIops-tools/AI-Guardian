@@ -117,7 +117,7 @@ def test_pull_model_allowed_posts_pull(fake_ollama):
 
 def test_remove_model_captures_prior_manifest_for_undo(fake_ollama):
     conn = fake_ollama(responses={"/api/show": _SHOW})
-    out = model_ops.remove_model(conn, "llama3.2:3b")
+    out = model_ops.remove_model(conn, AppConfig(), "llama3.2:3b")
     assert out["action"] == "remove_model"
     assert out["priorState"]["license"] == "MIT License"
     assert out["priorState"]["family"] == "llama"
@@ -139,7 +139,7 @@ def test_remove_model_survives_missing_manifest(fake_ollama):
             return {}
 
     conn = _NoShow()
-    out = model_ops.remove_model(conn, "gone:latest")
+    out = model_ops.remove_model(conn, AppConfig(), "gone:latest")
     assert out["priorState"]["model"] == "gone:latest"
     assert out["priorState"]["license"] is None
 

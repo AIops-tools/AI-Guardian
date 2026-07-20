@@ -13,7 +13,7 @@ from ai_guardian.cli._common import (
     cli_errors,
     console,
     double_confirm,
-    dry_run_print,
+    dry_run_preview,
     get_connection,
 )
 
@@ -70,13 +70,17 @@ def model_pull(model: NameArg, target: TargetOption = None) -> None:
 def model_remove(model: NameArg, target: TargetOption = None,
                  dry_run: DryRunOption = False) -> None:
     """Delete a local model (dry-run + double confirm)."""
-    if dry_run:
-        dry_run_print(operation="remove_model", api_call="DELETE /api/delete",
-                      parameters={"model": model})
-        return
-    double_confirm("remove model", model)
     from mcp_server.tools import models as gov
 
+    if dry_run:
+        # Through the governed call: the preview carries the reversible verdict,
+        # so the operator learns there will be no undo BEFORE deleting.
+        dry_run_preview(
+            gov.remove_model(model=model, dry_run=True, target=target),
+            operation="remove_model", api_call="DELETE /api/delete",
+            parameters={"model": model})
+        return
+    double_confirm("remove model", model)
     console.print_json(json.dumps(gov.remove_model(model=model, target=target)))
 
 

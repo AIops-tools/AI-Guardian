@@ -16,6 +16,12 @@ State lives under ``ops_home()`` (default ``~/.ai-guardian``).
 from ai_guardian.governance.audit import AuditEngine, get_engine
 from ai_guardian.governance.budget import BudgetExceeded, BudgetTracker, get_budget
 from ai_guardian.governance.decorators import PolicyDenied, governed_tool
+from ai_guardian.governance.outcome import (
+    UNKNOWN_FIELD,
+    capture_prior_state,
+    is_unknown,
+    mark_unknown,
+)
 from ai_guardian.governance.patterns import Pattern, PatternMatch, get_pattern_engine
 from ai_guardian.governance.policy import TierDecision, get_policy_engine
 from ai_guardian.governance.readonly import READ_ONLY_ENV, is_read_only
@@ -28,6 +34,10 @@ __all__ = [
     "opt_str",
     "is_read_only",
     "READ_ONLY_ENV",
+    "capture_prior_state",
+    "mark_unknown",
+    "is_unknown",
+    "UNKNOWN_FIELD",
     "PolicyDenied",
     "get_engine",
     "AuditEngine",

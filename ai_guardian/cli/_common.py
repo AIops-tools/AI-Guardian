@@ -68,6 +68,31 @@ def dry_run_print(*, operation: str, api_call: str, parameters: dict | None = No
     console.print("[magenta]  Run without --dry-run to execute.[/]\n")
 
 
+def dry_run_preview(
+    preview: Any, *, operation: str, api_call: str, parameters: dict | None = None
+) -> None:
+    """Render a GOVERNED dry-run result as the human-readable DRY-RUN banner.
+
+    ``preview`` must come from calling the governed tool with ``dry_run=True``,
+    so every verdict it carries has already been computed against the real
+    config. A refusal arrives as ``{"error": ...}`` (``tool_errors`` flattens the
+    exception) — it is printed like any other CLI error and exits non-zero.
+
+    ``remove_model`` reports ``reversible`` here rather than in an error: the
+    removal is still allowed, but the operator learns BEFORE deleting that no
+    undo will be recorded, which is the whole point of previewing it.
+    """
+    if isinstance(preview, dict) and preview.get("error"):
+        console.print(f"[red]Error: {preview['error']}[/]")
+        raise typer.Exit(1)
+    dry_run_print(operation=operation, api_call=api_call, parameters=parameters)
+    if isinstance(preview, dict) and preview.get("reversible") is False:
+        console.print(
+            "[yellow]  NOT reversible: policy denies this model, so no undo "
+            "will be recorded (pull_model would refuse to replay it).[/]\n"
+        )
+
+
 def double_confirm(action: str, resource: str) -> None:
     """Require two confirmations for a destructive operation."""
     console.print(f"[bold yellow]⚠️  About to: {action} '{resource}'[/]")
