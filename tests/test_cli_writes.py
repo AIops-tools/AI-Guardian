@@ -40,7 +40,15 @@ def _audit_tools(db_path) -> list[str]:
 
 
 @pytest.mark.unit
-def test_cli_model_remove_dry_run_makes_no_call_and_no_audit(gov_home, monkeypatch, fake_ollama):
+def test_cli_model_remove_dry_run_is_audited_but_never_writes(gov_home, monkeypatch, fake_ollama):
+    """A dry_run MAY read; it must never write.
+
+    The old name claimed "no call and no audit". The audit half was never a
+    stated rule — MCP previews have always audited, and the CLI silently not
+    auditing was the outlier, not the standard. What survives is the mutating
+    call being forbidden, which here is the strongest possible form: this
+    preview resolves its verdict from config and touches the runtime not at all.
+    """
     from ai_guardian.cli import app
 
     fake = fake_ollama()
@@ -51,10 +59,8 @@ def test_cli_model_remove_dry_run_makes_no_call_and_no_audit(gov_home, monkeypat
     assert result.exit_code == 0
     assert "DRY-RUN" in result.output
     assert fake.calls == [], "a dry-run must never touch the runtime"
-    # The preview now routes through the governed twin so it can report whether
-    # an undo will be recorded, which also lands an audit row. Not new behaviour
-    # but the removal of an inconsistency: MCP dry-runs have always audited, the
-    # CLI was the outlier. The invariant that matters is above — no API call.
+    verbs = {c[0] for c in fake.calls}
+    assert not verbs & {"POST", "PUT", "PATCH", "DELETE"}, "a dry-run must never mutate"
     assert _audit_tools(gov_home / "audit.db") == ["remove_model"]
 
 

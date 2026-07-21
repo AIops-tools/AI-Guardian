@@ -23,7 +23,7 @@ compatibility: >
   Every tool call is audited to a local SQLite DB at ~/.ai-guardian/audit.db (relocatable via AI_GUARDIAN_AIOPS_HOME); the OBSERVED local-LLM usage log is a SEPARATE DB at ~/.ai-guardian/usage.db.
   Zero-config: ai-guardian defaults to the local Ollama at http://localhost:11434 with no token. Ollama endpoints usually run open on a trusted host, so a bearer token is OPTIONAL; when one is supplied it is stored ENCRYPTED in ~/.ai-guardian/secrets.enc (Fernet/AES-128 + scrypt-derived key) — never plaintext on disk. The store is unlocked by a master password from AI_GUARDIAN_AIOPS_MASTER_PASSWORD (non-interactive/MCP/CI) or an interactive prompt (CLI on a TTY). A legacy plaintext env var AI_GUARDIAN_<TARGET_NAME_UPPER>_TOKEN is still honoured as a fallback with a deprecation warning (migrate with 'ai-guardian secret migrate').
   The prompt scanner is deterministic and offline (no I/O, no network); route-through guards (guarded_generate/observe_chat) call Ollama only if the prompt's risk band is below block_threshold AND the model is allowed. The raw prompt is never stored — only its length + redacted findings.
-  State-changing operations: remove_model (high, dry-run + double confirm at the CLI, undo re-pull, approver-gated); pull/unload/allowlist/denylist/pin/guarded writes are medium. All write tools pass through the @governed_tool decorator (pre-check + budget guard + audit + risk-tier gate).
+  State-changing operations: remove_model (high, dry-run + double confirm at the CLI, undo re-pull); pull/unload/allowlist/denylist/pin/guarded writes are medium. All write tools pass through the @governed_tool decorator (pre-check + budget guard + audit + risk-tier label).
   Webhooks: none — no outbound network calls beyond the configured Ollama REST API.
   Transitive dependencies: httpx (HTTP client) and the MCP SDK. No post-install scripts or background services.
   Validation status: the scanner/policy/risk-band are deterministic offline logic; the core Ollama route-through (real generation + policy deny + undo capture) was exercised against a live Ollama 0.24.0 on 2026-07-13, while the remaining runtime API paths and the OpenAI-compatible dialects are exercised against mocked responses (see docs/VERIFICATION.md). Content governance is opt-in route-through in v0.1, a transparent capture proxy is v0.2 roadmap, and IGEL AI Armor interop is doc-level positioning.
@@ -35,8 +35,8 @@ compatibility: >
 
 Governed observability + governance for **on-endpoint local LLMs (Ollama)** —
 **20 MCP tools**, every one wrapped with the bundled `@governed_tool` harness: a
-local unified audit log under `~/.ai-guardian/`, policy engine, token/runaway
-budget guard, undo-token recording, and graduated-autonomy risk tiers. It is the
+local unified audit log under `~/.ai-guardian/`, token/runaway budget guard,
+undo-token recording, and descriptive risk tiers. It is the
 **complement to IGEL AI Armor**: AI Armor governs *whether* a local model may run;
 ai-guardian records *what it did* and gates *what leaves in the prompt*.
 
@@ -96,8 +96,6 @@ ai-guardian init            # optional: endpoint(s) + optional token + model all
 | Hypervisor / storage / backup / container / network ops | the matching AIops-tools skill |
 
 ## Common Workflows
-
-> **Secure by default (v0.2.0+)**: with no `~/.ai-guardian/rules.yaml`, high/critical operations are denied unless `AI_GUARDIAN_AUDIT_APPROVED_BY` names an approver (set `AI_GUARDIAN_AUDIT_RATIONALE` too). `ai-guardian init` seeds a starter rules.yaml; an operator-authored rules file is honoured as-is.
 
 ### 1. Find and shut down shadow (unsanctioned) local models
 
@@ -186,9 +184,17 @@ ai-guardian init            # optional: endpoint(s) + optional token + model all
 
 ## Governance & Safety
 
-- Every tool call is audited to `~/.ai-guardian/audit.db` (relocatable via `AI_GUARDIAN_AIOPS_HOME`); observed local-LLM usage lives in a **separate** `~/.ai-guardian/usage.db`.
-- High-risk `remove_model` can require a named approver: set `AI_GUARDIAN_AUDIT_APPROVED_BY` and `AI_GUARDIAN_AUDIT_RATIONALE`.
-- **Secure by default (v0.2.0+)**: with no `~/.ai-guardian/rules.yaml`, high/critical operations are denied unless `AI_GUARDIAN_AUDIT_APPROVED_BY` names an approver (set `AI_GUARDIAN_AUDIT_RATIONALE` too). `ai-guardian init` seeds a starter rules.yaml; an operator-authored rules file is honoured as-is.
+The skill delivers reads and writes and records them; it does **not** decide
+whether a write is permitted. That is your agent's judgement, or the permission
+of the host and account you run it under (point it at a runtime the account
+cannot administer, or hand the agent only the scan/observe tools). There is no
+read-only switch, deny-rules file, or approval gate — content governance (the
+model allow/deny policy and the `guarded_generate` block threshold) is a
+separate, product-level control that stays.
+
+- **Audit is the guarantee, and it is not bypassable.** Every operation — MCP and CLI alike — is logged to `~/.ai-guardian/audit.db` (relocatable via `AI_GUARDIAN_AIOPS_HOME`): params, result, status, duration, and the risk tier. Observed local-LLM usage lives in a **separate** `~/.ai-guardian/usage.db`.
+- `AI_GUARDIAN_AUDIT_APPROVED_BY` / `AI_GUARDIAN_AUDIT_RATIONALE` are optional annotations recorded on the audit row (who/why); they are never required and never block.
+- **Runaway guard** — a safety backstop, not authorization: the same call looped in a tight window trips a circuit breaker. Disable with `AI_GUARDIAN_RUNAWAY_MAX=0`.
 - `remove_model` supports `--dry-run` + double confirmation at the CLI and records an undo (re-pull); allowlist/denylist writes record an undo → the prior list.
 - The scanner is deterministic and offline; findings are redacted so a secret is never re-emitted.
 

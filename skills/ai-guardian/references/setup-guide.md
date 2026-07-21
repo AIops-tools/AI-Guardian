@@ -78,9 +78,12 @@ export AI_GUARDIAN_AIOPS_MASTER_PASSWORD='your-master-password'
 - The token is held only in memory and is never logged or echoed; exception text
   is scrubbed of secret-shaped strings before being written to the audit log.
 
-## 5. Approver gate for high-risk writes
+## 5. Audit-annotation env vars (optional)
 
-`remove_model` is high-risk. To satisfy the approver gate:
+The skill does not decide whether a write is permitted — that is the agent's
+judgement or the permission of the host/account you run it under. If you want the
+audit trail to record *who* ran a destructive op and *why*, set these; they are
+recorded on the row, never required, and gate nothing:
 
 ```bash
 export AI_GUARDIAN_AUDIT_APPROVED_BY='you@example.com'
@@ -93,7 +96,7 @@ State lives under `~/.ai-guardian/` (relocate the governance state with
 `AI_GUARDIAN_AIOPS_HOME`):
 
 - `audit.db` — the **governance audit log**: every ai-guardian *tool call*, with
-  risk tier, approver, rationale.
+  risk tier and any approver/rationale.
 - `usage.db` — the **observed local-LLM usage log**: route-through prompts
   (`guarded_generate` / `observe_chat`) with model, actor, prompt length, risk
   band, redacted findings, and allowed/blocked. **The raw prompt is never stored.**

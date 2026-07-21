@@ -78,45 +78,34 @@ is client-supplied on every request. So ai-guardian observes on two fronts:
   + record + run-if-allowed, blocking on risk-band >= `block_threshold` (default
   `high`) or a disallowed model.
 - **Vendored governance harness** — audit log, token/runaway budget guard,
-  graduated-autonomy risk tiers, and undo-token recording, bundled in the package
+  descriptive risk tiers, and undo-token recording, bundled in the package
   (no external dependency).
 - **Highly self-testable** — Ollama is free + local for the API parts; the
   scanner, policy, and risk-band are pure deterministic offline logic.
 
-## Security: read-only mode
+## What this tool does, and does not, decide
 
-This tool is meant to be handed to an AI agent, so its safety story is enforced
-by the server rather than requested in a prompt:
+It delivers local-LLM observability and operations — reads and writes —
+accurately, and records every one of them. It does **not** decide whether a
+write to the model estate is allowed to happen. That is the agent's judgement,
+or the permission of the host and account you run it under: point it at a
+runtime the account cannot administer — an Ollama daemon whose model store the
+user can't modify, or an endpoint the agent reaches read-only — and the writes
+fail at the runtime, the place that actually owns the permission. Simplest of
+all, hand the connecting agent only the scan/observe tools.
 
-```bash
-export AI_GUARDIAN_READ_ONLY=1
-```
+So the harness has no read-only switch, no deny-rules file, and no approval gate
+to configure. (Content governance is a separate, product-level thing that stays:
+the model allow/deny policy and the `guarded_generate` block threshold still
+scan and gate what a model is asked to do.) The one thing the harness guarantees
+is that nothing is silent: **every call, over MCP and over the CLI alike, lands
+an audit row** in `~/.ai-guardian/audit.db`, and destructive writes still capture
+their before-state and record an inverse where one exists.
 
-With that set, the **9 write tools are never registered**. An MCP client
-lists **11 tools instead of 20** — the writes are not hidden, not
-gated behind a flag, and not merely refused when called. They are absent from
-the session. A model cannot invoke a tool it was never offered, and cannot be
-argued into one.
-
-That distinction is the whole point. A tool that exists but refuses still invites
-retry loops and "I'll describe the call instead" behaviour from smaller models,
-and it leaves a reviewer trusting a promise. An absent tool is a fact you can
-check: connect, list the tools, and see that the writes are not there.
-
-Enforcement is two layers deep, so the switch cannot be sidestepped by changing
-entry point:
-
-| Layer | What it does | Covers |
-|---|---|---|
-| `@governed_tool` harness | refuses every non-read operation outright | MCP, CLI, and in-process callers |
-| MCP registration | write tools are removed from `list_tools()` | anything speaking MCP |
-
-Read operations are unaffected, and every call is still audited to
-`~/.ai-guardian/audit.db`.
-
-> The read/write split is derived from each tool's declared `risk_level`, and a
-> test asserts that this never disagrees with the `[READ]`/`[WRITE]` tag in the
-> tool's own documentation — so a write can't quietly present itself as a read.
+> Each tool declares a `risk_level`, kept in agreement with its `[READ]`/`[WRITE]`
+> documentation tag by a test, and carried into the audit row as a descriptive
+> tier — so a reviewer can see at a glance that a row was a high-risk delete. It
+> is a label, not a gate.
 
 Running a smaller / local model? See
 [agent-guardrails.md](skills/ai-guardian/references/agent-guardrails.md) — it lists
@@ -145,7 +134,7 @@ restating them) and gives a ready-made system prompt for what's left.
 | Tool | Risk | Undo / safety |
 |------|:----:|---------------|
 | `pull_model` | medium | refused if it violates policy |
-| `remove_model` | **high** | dry-run + undo (re-pull); requires an approver |
+| `remove_model` | **high** | dry-run + undo (re-pull) |
 | `unload_model` | medium | evict from VRAM (`keep_alive:0`) |
 | `set_model_allowlist` | medium | undo → prior allowlist |
 | `set_model_denylist` | medium | undo → prior denylist |
@@ -191,17 +180,21 @@ ai-guardian mcp                                # or: ai-guardian-mcp
 
 ## Governance
 
-Every MCP tool passes through the bundled `@governed_tool` harness:
+Every operation — MCP **and** CLI — passes through the bundled `@governed_tool`
+harness. It records; it does not authorize (see above).
 
-- **Audit** — every call (params, result, status, duration, risk tier, approver,
-  rationale) is logged to `~/.ai-guardian/audit.db` (relocatable via
-  `AI_GUARDIAN_AIOPS_HOME`). This is **separate** from `~/.ai-guardian/usage.db`,
-  which holds the observed local-LLM usage.
-- **Budget / runaway guard** — token and call budgets trip a circuit breaker.
-- **Risk tiers** — graduated autonomy; high-risk ops (e.g. `remove_model`) can
-  require a named approver (`AI_GUARDIAN_AUDIT_APPROVED_BY` /
-  `AI_GUARDIAN_AUDIT_RATIONALE`).
-- **Undo recording** — reversible writes record an inverse descriptor.
+- **Audit** — every call (params, result, status, duration, risk tier, and any
+  operator-supplied approver/rationale) is logged to `~/.ai-guardian/audit.db`
+  (relocatable via `AI_GUARDIAN_AIOPS_HOME`). This is **separate** from
+  `~/.ai-guardian/usage.db`, which holds the observed local-LLM usage.
+- **Runaway guard** — a safety backstop, not an authorization gate: the same
+  call hammered in a tight loop trips a circuit breaker so a stuck agent can't
+  burn unbounded calls/time. Disable with `AI_GUARDIAN_RUNAWAY_MAX=0`; optional
+  hard ceilings via `AI_GUARDIAN_MAX_TOOL_CALLS` / `AI_GUARDIAN_MAX_TOOL_SECONDS`.
+- **Undo recording** — reversible writes record an inverse descriptor built from
+  the fetched before-state.
+- **Risk tier** — a descriptive label on the audit row derived from
+  `risk_level`; it gates nothing.
 
 ## Supported scope + limitations
 

@@ -44,16 +44,18 @@ Every MCP tool runs through the bundled `@governed_tool` harness
   `AI_GUARDIAN_MAX_TOOL_SECONDS`) plus an on-by-default guard that trips a tight
   poll/retry loop, preventing unbounded API consumption (e.g. polling a slow
   session).
-- **Graduated risk tiers** — `~/.ai-guardian/rules.yaml` `risk_tiers` gate
-  writes by environment/tag; the highest tiers require a recorded approver.
+- **Risk-tier labelling** — each tool's declared `risk_level` is carried into
+  the audit row as a descriptive tier. It labels the row; it does not gate the
+  call. Whether a write is permitted is the agent's or the account's decision,
+  not the skill's.
 - **Undo-token recording** — reversible writes capture prior state and record an
   inverse (e.g. `remove_model` captures the manifest so the harness records a
   re-pull undo; `set_model_allowlist`/`set_model_denylist` restore the prior policy).
 
 ### State-Changing Operations
 The only destructive op is `remove_model` (`risk_level=high`): it deletes a local
-model, so it accepts a `dry_run` preview, is double-confirmed at the CLI, and
-requires a recorded approver (`AI_GUARDIAN_AUDIT_APPROVED_BY`) under the policy.
+model, so it accepts a `dry_run` preview and is double-confirmed at the CLI.
+`AI_GUARDIAN_AUDIT_APPROVED_BY` is an optional audit annotation, never required.
 `pull_model` (refused if it violates the deny/allow policy), `unload_model`, the
 policy writes, and `guarded_generate`/`observe_chat` are `risk_level=medium`.
 

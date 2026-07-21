@@ -23,10 +23,17 @@ DryRunOption = Annotated[
 
 
 def _cli_error_types() -> tuple[type[BaseException], ...]:
-    """Exceptions translated to a one-line teaching error instead of a traceback."""
-    from ai_guardian.connection import OllamaApiError
+    """Exceptions translated to a one-line teaching error instead of a traceback.
 
-    return (OllamaApiError, KeyError, OSError, ValueError)
+    ``PolicyDenied`` belongs here even though it is not a ValueError: its message
+    names the exact env var to set and why, which is the single most actionable
+    error this tool produces. Without it a denied command exits 1 printing
+    NOTHING — a bare traceback for the product's flagship governance features.
+    """
+    from ai_guardian.connection import OllamaApiError
+    from ai_guardian.governance import PolicyDenied
+
+    return (OllamaApiError, KeyError, OSError, ValueError, PolicyDenied)
 
 
 def cli_errors(fn: Callable) -> Callable:

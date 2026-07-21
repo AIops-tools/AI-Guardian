@@ -55,5 +55,5 @@ ai-guardian secret rotate-password                 # re-encrypt under a new mast
 
 - `--target, -t <name>` — target name from `config.yaml` (omit to use the default/first target, i.e. the local Ollama)
 - `--dry-run` (on `model remove`) — print the API call that would be made, change nothing
-- `model remove` requires two confirmations; set `AI_GUARDIAN_AUDIT_APPROVED_BY` (+ `AI_GUARDIAN_AUDIT_RATIONALE`) for the high-risk approver gate
+- `model remove` requires two confirmations; set `AI_GUARDIAN_AUDIT_APPROVED_BY` (+ `AI_GUARDIAN_AUDIT_RATIONALE`) to record who/why on the audit row (optional)
 - The route-through guards (`guarded_generate` / `observe_chat`) are MCP-only; use `guard scan` on the CLI to pre-check text without a model call

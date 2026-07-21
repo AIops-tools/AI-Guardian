@@ -25,7 +25,7 @@
 | Tool | Risk | Ollama endpoint / effect | Undo / safety |
 |------|------|--------------------------|---------------|
 | `pull_model` | medium | `POST /api/pull` | **refused if it violates the deny/allow policy** |
-| `remove_model` | **high** | `DELETE /api/delete` | captures the model manifest; records an undo (`pull_model` re-pull); CLI `--dry-run` + double confirm; requires an approver (`AI_GUARDIAN_AUDIT_APPROVED_BY`) |
+| `remove_model` | **high** | `DELETE /api/delete` | captures the model manifest; records an undo (`pull_model` re-pull); CLI `--dry-run` + double confirm |
 | `unload_model` | medium | `POST /api/generate` `keep_alive:0` | evict from VRAM; no undo |
 | `set_model_allowlist` | medium | writes `config.yaml` | undo → prior allowlist (immutable replace, not append) |
 | `set_model_denylist` | medium | writes `config.yaml` | undo → prior denylist (deny patterns always win) |

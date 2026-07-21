@@ -133,20 +133,12 @@ def test_optional_token_lands_encrypted_not_in_config(isolated_home, monkeypatch
     assert ss.SecretStore.unlock(MASTER_PW).get("local") == "bearer-token-xyz"
 
 
-def test_rules_yaml_seeded_with_approver_tier(isolated_home):
+def test_init_writes_no_policy_rules(isolated_home):
+    """The skill no longer authorizes, so init seeds no rules.yaml — a fresh
+    install delivers full functionality and leaves permission to the account."""
     result = _run_init(HAPPY_ANSWERS)
     assert result.exit_code == 0, result.output
-
-    rules = (isolated_home / "rules.yaml").read_text("utf-8")
-    assert "high-risk-requires-approver" in rules
-    assert "risk_tiers" in rules
-
-
-def test_rerun_does_not_clobber_existing_rules(isolated_home):
-    (isolated_home / "rules.yaml").write_text("# operator-authored\n", "utf-8")
-    result = _run_init(HAPPY_ANSWERS)
-    assert result.exit_code == 0, result.output
-    assert (isolated_home / "rules.yaml").read_text("utf-8") == "# operator-authored\n"
+    assert not (isolated_home / "rules.yaml").exists()
 
 
 def test_declining_doctor_prompt_skips_reachability(isolated_home, monkeypatch):

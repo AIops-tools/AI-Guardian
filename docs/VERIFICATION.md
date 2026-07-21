@@ -145,11 +145,11 @@ do not silently pass.
 - [ ] `anomaly_report` → the drift, the shadow model, and the blocked prompts
       from section 4 all appear in the rollup.
 
-### 7. Governance actually gates
-- [ ] With no `~/.ai-guardian/rules.yaml`, `remove_model` is **refused** unless
-      `AI_GUARDIAN_AUDIT_APPROVED_BY` names an approver (secure-by-default).
-- [ ] With the approver set, the removal proceeds and the audit row records the
-      approver and `AI_GUARDIAN_AUDIT_RATIONALE`.
+### 7. Audit is unbypassable — both entry points
+- [ ] Run `remove_model` over MCP and the same op over the CLI; confirm **both**
+      land a row in `audit.db`, and that `AI_GUARDIAN_AUDIT_APPROVED_BY` /
+      `AI_GUARDIAN_AUDIT_RATIONALE`, when set, appear on the row (recorded, never
+      required — the skill authorizes nothing).
 - [ ] A failed write is audited with `status=error` and records **no** undo token.
 - [ ] `AI_GUARDIAN_AIOPS_HOME` set to a temp dir relocates `audit.db`,
       `usage.db`, and the secret store (no hardcoded real `$HOME`).

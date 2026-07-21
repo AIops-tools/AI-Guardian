@@ -110,7 +110,6 @@ def remove_model(model: str, dry_run: bool = False, target: Optional[str] = None
     """[WRITE][risk=high] Delete a local model. Destructive — pass dry_run=True to preview.
 
     Captures the model's manifest so the harness records an undo (re-pull).
-    Requires an approver (set AI_GUARDIAN_AUDIT_APPROVED_BY).
 
     An undo is recorded only when the allow/deny policy would permit re-pulling
     the model. For a denied one the result says reversible=false and explains

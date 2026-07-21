@@ -29,7 +29,7 @@ import yaml
 
 from ai_guardian.governance.paths import ops_home
 from ai_guardian.runtimes import DEFAULT_RUNTIME, RuntimeSpec, get_runtime
-from ai_guardian.secretstore import SecretStoreError, get_secret, has_store
+from ai_guardian.secretstore import MasterPasswordError, SecretStoreError, get_secret, has_store
 
 CONFIG_DIR = ops_home()
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
@@ -58,6 +58,13 @@ def _resolve_secret(name: str) -> str:
     if has_store():
         try:
             return get_secret(name)
+        except MasterPasswordError:
+            # A wrong or missing master password is NOT "this target has no
+            # secret". Falling through resurfaced it as a missing-credential
+            # error, sending the operator to add something already there.
+            # MasterPasswordError subclasses SecretStoreError, so the broad
+            # catch below would swallow it — re-raise first.
+            raise
         except SecretStoreError:
             pass
     legacy = os.environ.get(_secret_env_key(name))

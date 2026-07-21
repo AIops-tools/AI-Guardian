@@ -12,18 +12,43 @@ better results with a short system prompt. This page gives you one, and — more
 importantly — tells you which guardrails you **no longer need to write**, because
 the tool now enforces them itself.
 
-## What the tool now enforces — do not waste prompt budget on these
+The distinction matters. A guardrail in a prompt is a request. A guardrail in the
+harness is a guarantee. Anything below that we could move into the harness, we did.
+
+## Authorization is not this tool's job — decide it where it belongs
+
+Whether a write should happen is your decision, or the account's. The tool does
+not gate it — there is no read-only switch and no approval prompt to configure.
+The two right places to control read vs write:
+
+- **The host and account you run under.** Point the tool at a runtime the account
+  cannot administer — an Ollama daemon whose model store the user can't modify —
+  so a `remove_model` or `pull_model` fails at the runtime, the only place the
+  permission actually lives. A revoked permission cannot be argued around by a
+  model; a skill-side flag can.
+- **Your agent's system prompt.** If you want an observe-only session, tell the
+  model not to call the write tools (they are clearly tagged `[WRITE]`), or hand
+  it only the scan/observe tools.
+
+Content governance is different, and it stays: `guarded_generate` still scans and
+gates each prompt against the allow/deny model policy and the block threshold
+before the model runs. That is a product control over *what a model is asked to
+do*, not an authorization gate over *which tools an agent may call*.
+
+What the tool *does* guarantee is that you can always see what happened:
+
+## What the tool enforces — do not waste prompt budget on these
 
 | You might be tempted to prompt | Why you don't need to |
 |---|---|
-| "Only observe, never change the model estate" | Set `AI_GUARDIAN_READ_ONLY=1`. Write tools are then **not registered at all** — they never appear in the tool list, so the model cannot call one even if it tries. That includes `pull_model`, `remove_model`, `unload_model`, **and the policy writes** (`set_model_allowlist`, `set_model_denylist`, `pin_model_digest`) — an agent cannot widen its own allowlist while read-only mode is on. `guarded_generate` / `observe_chat` go too, since they call the runtime and append to the usage log. Pure `scan_prompt` stays: it calls nothing and records nothing. |
+| "Log everything you do, over both MCP and the CLI" | Every call is audited to `~/.ai-guardian/audit.db` regardless of what the model says it did — and the CLI writes the same row the MCP path does, so there is no unaudited entry point. Reversible writes also record an undo token capturing the *prior* state. Observed local-LLM usage lives in a separate `~/.ai-guardian/usage.db`. |
 | "Don't invent a digest / version / license" | A field the runtime cannot report comes back as `null`, never as `""`. This is load-bearing: Ollama and llama.cpp expose a pinnable identity, while LM Studio and vLLM expose only a model id. |
 | "Don't call it tampering when you just can't tell" | `model_provenance` reports a pinned model with no obtainable digest as `unverifiable`, never as `DRIFT`. Only a digest that is present **and** different is drift. |
 | "Tell me if the output was cut off" | `usage_events` returns `{"events": [...], "count": N, "returned": N, "limit": L, "truncated": true/false}`. Truncation is measured (one extra row is fetched), not guessed. An under-reported usage log otherwise looks exactly like an absence of risky prompts. |
 | "Never log the prompt text itself" | The route-through path stores only the prompt's length, its risk band, and the redacted findings. The raw prompt is never written to the usage log. |
 | "Redact secrets before showing me" | The scanner's findings are already redacted; matched secrets and PII are reported by type and location, not by value. |
-| "Confirm before anything destructive" | `remove_model` is high-risk, requires a `--dry-run`-able preview + double confirmation at the CLI, captures the model manifest for an undo (re-pull), and needs a named approver (`AI_GUARDIAN_AUDIT_APPROVED_BY`). |
-| "Log what you did" | Every call is audited to `~/.ai-guardian/audit.db` regardless of what the model says it did. |
+| "Confirm before anything destructive" | `remove_model` is high-risk, requires a `--dry-run`-able preview + double confirmation at the CLI, and captures the model manifest for an undo (re-pull). |
+| "Don't get stuck retrying" | The runaway guard trips a circuit breaker if the same call is hammered in a tight loop — a stuck agent is stopped rather than left to burn calls and time. |
 
 ## What still needs a prompt
 
@@ -68,25 +93,29 @@ SCOPE
 
 ## Recommended setup for a local model
 
+Start with a connection that *cannot* write, verify, and widen the account's
+permission only when you trust the setup — `remove_model` deletes local model
+weights, and re-pulling them is a large download rather than a quick undo:
+
 ```bash
-# Observe only — no pulls, no removals, no policy edits, no route-through.
-export AI_GUARDIAN_READ_ONLY=1
+# e.g. point ai-guardian at a runtime/account that can't administer the model
+# store, or hand the agent only the scan/observe tools. Then:
 ai-guardian doctor
 ```
 
-Then, when you are ready to allow writes, unset it and set an approver so the
-high-risk tier has an accountable name on it:
+Optionally annotate the audit trail with who is operating and why — recorded on
+every row, never required:
 
 ```bash
-unset AI_GUARDIAN_READ_ONLY
 export AI_GUARDIAN_AUDIT_APPROVED_BY="your.name@example.com"
 export AI_GUARDIAN_AUDIT_RATIONALE="removing unsanctioned model per policy review"
 ```
 
-Note that read-only mode disables the route-through path (`guarded_generate`,
-`observe_chat`) as well, since it calls the runtime and appends to the usage log.
-If you want content governance active, run without read-only mode and rely on the
-policy layer — that is what the block threshold and the allow/deny lists are for.
+Content governance is independent of all this: `guarded_generate` / `observe_chat`
+scan each prompt, gate it against the allow/deny model policy and the block
+threshold, record it to the usage log, and only then call the model. That is what
+keeps secrets and jailbreaks out of a local model regardless of how read vs write
+is controlled.
 
 ## If your model still struggles
 
