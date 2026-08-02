@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 2026-08-02
+## v0.7.0 — 2026-08-02
 
 ### Changed (BREAKING)
 - **Requires MCP SDK 2.0** (`mcp[cli]>=2.0,<3.0`). `mcp.server.fastmcp` no longer exists in 2.0; the server is now built with `MCPServer` and reports its package version in the stdio handshake.
@@ -35,7 +35,7 @@ See RELEASE_NOTES.md for the full detail.
 - **New:** llama.cpp / LM Studio / local vLLM runtimes via one OpenAI-compatible transport.
 - **Undo executor**: `undo list` / `undo apply <id>` (CLI + MCP) — apply a recorded replayable inverse; the dispatched inverse is re-gated by its own risk tier; single-use, dry-run, double-confirm, both wrapper + inverse audited.
 
-## Unreleased
+## v0.7.0 — 2026-08-02
 
 ### Added
 - **Multiple local-LLM runtimes** beyond Ollama, via a runtime registry
