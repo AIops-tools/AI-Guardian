@@ -160,6 +160,27 @@ def _build_target(t: dict) -> TargetConfig:
     )
 
 
+def _read_pins(raw: object) -> tuple[tuple[str, str], ...]:
+    """Normalise ``pinned_digests`` to (model, digest) strings.
+
+    A pin that is not a string used to travel through as-is and then read as
+    falsy, so the provenance guard reported the model ``unpinned`` and
+    ``driftCount: 0`` — the guard silently switched itself off for that model.
+    For a check whose whole job is noticing that a model was swapped, degrading
+    to "no pin" is the wrong failure: an unusable pin is now kept as a string, so
+    it simply never matches and surfaces as DRIFT, loudly. YAML is the usual
+    culprit — an unquoted all-digit digest parses as an int.
+    """
+    items = (raw or {}).items() if isinstance(raw, dict) else ()
+    pins = []
+    for model, digest in items:
+        text = str(digest).strip()
+        if not text:
+            continue  # a blank value is "no pin", which is what it looks like
+        pins.append((str(model), text))
+    return tuple(pins)
+
+
 def load_config(config_path: Path | None = None) -> AppConfig:
     """Load endpoints + model policy from YAML."""
     path = config_path or CONFIG_FILE
@@ -177,5 +198,5 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         targets=targets,
         allowed_models=tuple(raw.get("allowed_models", []) or []),
         denied_models=tuple(raw.get("denied_models", []) or []),
-        pinned_digests=tuple((raw.get("pinned_digests", {}) or {}).items()),
+        pinned_digests=_read_pins(raw.get("pinned_digests")),
     )

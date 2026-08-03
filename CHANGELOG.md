@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **An unusable digest pin no longer switches the provenance guard off.** A pin that was not a string travelled through and then read as falsy, so `model_provenance` reported the model `unpinned` with `driftCount: 0` — a tamper check answering "nothing to check" instead of "this does not match". YAML is the usual culprit: an unquoted all-digit digest parses as an int. Pins are normalised to strings at the config boundary, so an unusable one simply never matches and surfaces as `DRIFT`. A blank value is still treated as "no pin", which is what it looks like.
 - **`undo apply` replays against the target the original write ran on.** It dispatched the inverse against whatever target the *caller* named — in practice the config's first entry — while the write's own target sat unused in the undo record. On a multi-target config the inverse therefore ran against the wrong host; it only looks harmless because the resource usually is not there, but two hosts holding the same name and the inverse **succeeds on the wrong one, silently**. An explicitly named target still wins. Line-wide: all 24 copies had the identical defect. Caught live in container-host-aiops, where a stop recorded against a Podman target replayed against a Portainer one.
 
 ## v0.7.0 — 2026-08-02

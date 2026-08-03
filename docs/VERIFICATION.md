@@ -30,10 +30,36 @@ closed the governance loop end-to-end. What it actually covered:
 - **Undo capture** — a governed write recorded its inverse descriptor and the
   audit row landed (section 5, box 1).
 
-Those boxes are ticked below. **Everything else in this checklist remains
-unverified** — notably undo *replay*, VRAM/residency reads, provenance drift
-detection, and the entire OpenAI-compatible multi-runtime surface
-(llama.cpp / LM Studio / local vLLM), which has never been run live.
+Those boxes are ticked below.
+
+## 🟡 Second round (2026-08-03): the remaining gaps, against a real Ollama 0.32.5
+
+Undo **replay**, residency reads, provenance drift and the OpenAI-compatible
+surface were all exercised live. One defect, one honest limitation:
+
+- **Undo replay works.** `set_model_allowlist` wrote a two-entry allowlist, and
+  `undo apply` restored the prior (empty) list — `applied: true`,
+  `effectVerified: true`, confirmed by re-reading the config file.
+- 🔴 **An unusable digest pin silently disarmed the guard.** With a pin that YAML
+  had parsed as a non-string, `model_provenance` reported the model `unpinned`
+  and `driftCount: 0` — a tamper check saying "nothing to check". Pins are now
+  normalised to strings at the config boundary, so an unusable pin never matches
+  and shows up as `DRIFT`. Drift detection itself is correct: a wrong (realistic,
+  hex) pin produced `status: DRIFT`, `driftCount: 1`, and the model appeared in
+  the `anomalies` rollup.
+- **Residency reads are right, but were unreadable on a CPU-only host** — the
+  common case for a local-LLM guardian. `size_vram` is a truthful `0` there and
+  was the only size reported, so a resident 484 MB model read as nothing loaded.
+  `sizeBytes` (what it actually occupies) is now returned alongside.
+- **The OpenAI-compatible surface is no longer mock-only.** Exercised against a
+  genuine `/v1` implementation (Ollama's own OpenAI-compatible endpoint):
+  `doctor`, `model list`, `model running` and `overview` all behaved, with
+  `null` — not `0` or `""` — for the fields the OpenAI schema simply does not
+  carry (digest, sizes, quantization).
+  > Stated precisely: this verifies the **OpenAI-compatible client path** and
+  > the runtimes whose health probe is `/v1/models` (lmstudio, vllm). It does
+  > **not** verify llama.cpp's own `/health` probe, LM Studio, or vLLM as
+  > products — those still need the real servers.
 
 ## What the test suite already guarantees
 

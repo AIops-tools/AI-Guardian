@@ -70,6 +70,11 @@ def running_models(conn: Any, config: AppConfig) -> list[dict]:
             "name": name,
             "digest": opt_s(r.get("digest"), 80),
             "sizeVramBytes": r.get("size_vram"),
+            # On a CPU-only host — the common case for a local-LLM guardian —
+            # size_vram is a truthful 0, and it was the only size reported, so a
+            # resident 484 MB model read as "nothing loaded". size is what it
+            # actually occupies. Verified against a real Ollama 0.32.5.
+            "sizeBytes": r.get("size"),
             "expiresAt": opt_s(r.get("expires_at"), 40),
             "allowed": config.model_allowed(name),
         })

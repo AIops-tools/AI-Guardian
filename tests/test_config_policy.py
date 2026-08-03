@@ -104,3 +104,29 @@ def test_load_config_reads_policy_and_pins(tmp_path):
     assert cfg.allowed_models == ("llama*",)
     assert cfg.denied_models == ("*bad*",)
     assert cfg.pins == {"llama3": "sha256:x"}
+
+
+@pytest.mark.unit
+def test_a_non_string_pin_stays_a_pin_instead_of_silently_unpinning(tmp_path):
+    """An unusable pin must not turn the provenance guard off for that model.
+
+    An unquoted all-digit digest parses as an int, which then read as falsy: the
+    model came back ``unpinned`` with ``driftCount: 0`` — a tamper check
+    reporting "nothing to check" rather than "this does not match". Seen while
+    exercising drift detection against a real Ollama 0.32.5.
+    """
+    f = tmp_path / "c.yaml"
+    f.write_text(
+        "targets:\n  - name: local\n"
+        "pinned_digests:\n  m1: 0000000000\n  m2: ''\n  m3: abc123\n",
+        "utf-8",
+    )
+    pins = load_config(f).pins
+    # YAML has already turned the unquoted digits into an int by this point, so
+    # the original text is gone either way. What matters is that a pin remains
+    # PRESENT and truthy, so the guard stays armed and reports DRIFT, instead of
+    # vanishing into "unpinned".
+    assert "m1" in pins
+    assert isinstance(pins["m1"], str) and pins["m1"]
+    assert pins["m3"] == "abc123"
+    assert "m2" not in pins  # a blank value really is "no pin"
