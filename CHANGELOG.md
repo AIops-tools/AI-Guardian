@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.8.0 — 2026-08-03
 
 ### Fixed
 - **An unusable digest pin no longer switches the provenance guard off.** A pin that was not a string travelled through and then read as falsy, so `model_provenance` reported the model `unpinned` with `driftCount: 0` — a tamper check answering "nothing to check" instead of "this does not match". YAML is the usual culprit: an unquoted all-digit digest parses as an int. Pins are normalised to strings at the config boundary, so an unusable one simply never matches and surfaces as `DRIFT`. A blank value is still treated as "no pin", which is what it looks like.
