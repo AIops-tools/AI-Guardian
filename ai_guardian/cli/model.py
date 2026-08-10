@@ -10,6 +10,7 @@ import typer
 from ai_guardian.cli._common import (
     DryRunOption,
     TargetOption,
+    checked,
     cli_errors,
     console,
     double_confirm,
@@ -62,7 +63,7 @@ def model_pull(model: NameArg, target: TargetOption = None) -> None:
     """Pull a model (refused if it violates policy)."""
     from mcp_server.tools import models as gov
 
-    console.print_json(json.dumps(gov.pull_model(model=model, target=target)))
+    console.print_json(json.dumps(checked(gov.pull_model(model=model, target=target))))
 
 
 @model_app.command("remove")
@@ -81,7 +82,7 @@ def model_remove(model: NameArg, target: TargetOption = None,
             parameters={"model": model})
         return
     double_confirm("remove model", model)
-    console.print_json(json.dumps(gov.remove_model(model=model, target=target)))
+    console.print_json(json.dumps(checked(gov.remove_model(model=model, target=target))))
 
 
 @model_app.command("unload")
@@ -90,4 +91,4 @@ def model_unload(model: NameArg, target: TargetOption = None) -> None:
     """Evict a model from VRAM (keep_alive:0)."""
     from mcp_server.tools import models as gov
 
-    console.print_json(json.dumps(gov.unload_model(model=model, target=target)))
+    console.print_json(json.dumps(checked(gov.unload_model(model=model, target=target))))
