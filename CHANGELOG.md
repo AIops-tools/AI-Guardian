@@ -22,7 +22,13 @@ Driven over **real HTTP** rather than mocks — a stub upstream on a real socket
 - an unreachable upstream produced a 502 naming the proxy, so it cannot be mistaken for a model failure;
 - the usage log contained the lengths, bands, and findings — and a byte search of the database found **no raw prompt text**.
 
-**Still unverified:** no run against a real Ollama. The request/response shapes exercised are this tool's own, not measured from the runtime, so treat the Ollama-specific behaviour (streaming NDJSON semantics in particular) as unconfirmed until `docs/VERIFICATION.md` says otherwise.
+**Also verified against a real Ollama 0.32.5** — the four runtime-specific gaps are closed:
+- **Streaming is genuinely incremental, not buffered**: 81 chunks with the first at 0.23s and the last at 4.61s (a 4.38s spread, against 5.41s measured directly from Ollama), framing intact including the terminal `done:true` record.
+- **A long generation** relayed 759 chunks over 42.4s with no timeout and no truncation.
+- **`/v1/chat/completions` and `/v1/completions`** both returned 200 with real content through the proxy; keep-alive held over six requests on one connection.
+- **Containment re-proved with a positive control.** Ollama does not log prompts even with `OLLAMA_DEBUG_LOG_REQUESTS=true` — the *allowed* prompt was equally absent from its log, which is what exposed that instrument as worthless. A recording pass-through inserted between the proxy and the runtime showed the allowed prompt arriving (the control) while the blocked prompt, the denied model's prompt, and the AWS key never did.
+
+**Still unverified:** the other supported runtimes (llama.cpp, LM Studio, vLLM) through the proxy, and any non-loopback or multi-client deployment.
 
 ### Fixed
 - OpenAI multi-part message content contributed empty strings for non-text parts (an `image_url`), padding the scanned text with blank lines and inflating the recorded `promptChars`. Caught by a unit test on the extractor.

@@ -228,7 +228,51 @@ coverage.
   this tool's result there once green so the verification-debt ledger stays
   accurate.
 
-## Capture proxy — mechanics verified over real HTTP; Ollama specifics NOT (2026-08-11)
+## Capture proxy ✅ — live-verified against real Ollama 0.32.5 (2026-08-11)
+
+Both halves are now done: the mechanics over real HTTP with a stub upstream, and
+the runtime-specific behaviour against a real Ollama **0.32.5** (note: the
+handbook's earlier ai-guardian verification used 0.24.0).
+
+**Containment, with a positive control.** Ollama does not log prompts even with
+`OLLAMA_DEBUG_LOG_REQUESTS=true`, so a grep of its log proves nothing — the
+*allowed* prompt was equally absent, which is what exposed the instrument as
+useless. A recording pass-through was inserted instead, giving
+`client → proxy:11435 → recorder:11436 → ollama:11434`:
+
+| marker | reached the runtime? |
+|---|---|
+| `ALLOWEDMARKER` (clean prompt) | **yes** — the positive control that makes the rest meaningful |
+| `BLOCKEDMARKER` + an AWS key | no |
+| `DENIEDMARKER` (denied model) | no |
+| the AWS key itself | no |
+
+**The four previously-unverified runtime behaviours:**
+
+1. **Real streaming NDJSON, genuinely incremental.** A warm-model generation
+   relayed 81 chunks with the first at **0.23 s** and the last at **4.61 s** — a
+   4.38 s spread, against 5.41 s measured directly from Ollama. Chunks arrive over
+   time; the relay does not buffer. Framing is intact, including the terminal
+   `done:true` record with `context` and the timing fields.
+2. **A long generation.** 759 chunks relayed over **42.4 s** with no timeout and
+   no truncation, which exercises the 300 s default far past a single buffer.
+3. **The OpenAI-compat paths** `/v1/chat/completions` and `/v1/completions` both
+   returned 200 with real `choices` content through the proxy.
+4. **Keep-alive**: six requests on one client connection, all 200.
+
+Also confirmed live: `/api/tags` (ungoverned) passed through and returned the four
+real installed models; the usage log recorded 18 proxy events with **12 distinct**
+`prompt_chars` values, and a byte search of `usage.db` found no prompt text — not
+even from the requests that were allowed through.
+
+> ⚠️ One measurement trap worth keeping: grouping the usage rows by band made
+> `prompt_chars` look constant. That was SQLite returning an arbitrary row per
+> group, not a stuck counter — listing the rows individually showed 12 distinct
+> lengths. **A summary query is not a measurement.**
+
+### The earlier stub-based run (kept: it is what found the defects)
+
+### Mechanics over real HTTP with a stub upstream
 
 The proxy is exercised as HTTP, not as mocked calls: a stub upstream on a real
 socket with a real `GuardianProxy` in front of it, plus the actual
@@ -254,7 +298,7 @@ OpenAI content parts padded the scanned text and inflated `promptChars`, and
 `proxy serve` crashed on startup because `get_connection` returns
 `(conn, AppConfig)` and the resolved target comes from the config.
 
-**Not verified — no real Ollama was available:**
+**These were the gaps at the time; all four are now closed above:**
 
 1. **The runtime's actual streaming semantics.** The stub emits chunked NDJSON
    because that is what Ollama documents; whether a real streaming generation
@@ -269,6 +313,8 @@ OpenAI content parts padded the scanned text and inflated `promptChars`, and
    requests** (HTTP/1.1 keep-alive is enabled; only short-lived curl/httpx
    clients have been used).
 
-Until those are done, the proxy should be described as verified in its mechanics
-and unverified against a real runtime — which is what the CHANGELOG says.
+All four were subsequently closed against real Ollama 0.32.5 (see the section
+above). What remains genuinely unverified: behaviour against the other supported
+runtimes (llama.cpp, LM Studio, vLLM) through the proxy, and any
+non-loopback/multi-client deployment.
 
