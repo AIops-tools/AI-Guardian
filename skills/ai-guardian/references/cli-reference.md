@@ -1,6 +1,6 @@
 # ai-guardian CLI reference
 
-> The CLI is a convenience subset; the full 20-tool surface
+> The CLI is a convenience subset; the full 21-tool surface
 > is via MCP (`ai-guardian mcp`). Works zero-config against a local Ollama
 > (`http://localhost:11434`).
 

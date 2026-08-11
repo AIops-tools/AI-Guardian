@@ -2,7 +2,7 @@
 name: ai-guardian
 slug: ai-guardian
 displayName: "AI Guardian"
-summary: "Governed local-LLM (Ollama) observability: model policy, prompt scanner, 20 tools."
+summary: "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools."
 license: MIT
 homepage: https://github.com/AIops-tools/AI-Guardian
 tags: [aiops, mcp, governance, ai-guardian]
@@ -34,7 +34,7 @@ compatibility: >
 > **Disclaimer**: Community-maintained open-source project, **not affiliated with, endorsed by, or sponsored by Ollama, IGEL, or any AI-security vendor.** Product and trademark names belong to their owners. Source at [github.com/AIops-tools/AI-Guardian](https://github.com/AIops-tools/AI-Guardian) under the MIT license.
 
 Governed observability + governance for **on-endpoint local LLMs (Ollama)** —
-**20 MCP tools**, every one wrapped with the bundled `@governed_tool` harness: a
+**21 MCP tools**, every one wrapped with the bundled `@governed_tool` harness: a
 local unified audit log under `~/.ai-guardian/`, token/runaway budget guard,
 undo-token recording, and descriptive risk tiers. It is the
 **complement to IGEL AI Armor**: AI Armor governs *whether* a local model may run;
@@ -200,6 +200,6 @@ separate, product-level control that stays.
 
 ## References
 
-- `references/capabilities.md` — full 20-tool + endpoint reference
+- `references/capabilities.md` — full 21-tool + endpoint reference
 - `references/cli-reference.md` — CLI command reference
 - `references/setup-guide.md` — onboarding, optional token, and connectivity

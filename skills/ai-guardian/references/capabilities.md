@@ -1,6 +1,6 @@
 # ai-guardian capabilities
 
-> 20 MCP tools (10 read, 8 write, 2 undo) over Ollama's REST API
+> 21 MCP tools (11 read, 8 write, 2 undo) over Ollama's REST API
 > (default `http://localhost:11434`, usually no auth). The scanner / policy /
 > risk-band are pure deterministic offline logic; the Ollama paths need live
 > verification.
@@ -54,6 +54,9 @@ Pure, offline, no network. Categories and weighted risk band:
 - GPU inference-**cluster** serving/ops (multi-node) — a different AIops-tools tool
 - Model training / fine-tuning
 - Non-Ollama local-LLM runtimes
-- A **transparent capture proxy** for other clients' traffic — **v0.2 roadmap**
+- ~~A transparent capture proxy for other clients' traffic~~ — **shipped**:
+  `ai-guardian proxy serve` (CLI-only; it blocks while listening, so an MCP tool
+  that started it would hang the caller). `proxy_guidance` composes the command
+  and states the caveat: it is a **chokepoint, not an enforcement boundary**
 
 Want one of these? Open an issue or PR — feedback and contributions welcome.

@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.10.0 — 2026-08-11
+
+### Added
+- **Transparent capture proxy** (`ai-guardian proxy serve`) — the v0.2 roadmap item this tool has advertised since v0.1. `guarded_generate` only governs callers that choose to route through it; the proxy applies the same scan, model policy, and recording to traffic from a client that never opted in. Point the client at the listener instead of the runtime (`OLLAMA_HOST=http://127.0.0.1:11435`) and nothing else changes. Governs `/api/generate`, `/api/chat`, `/v1/chat/completions`, `/v1/completions`; every other path is forwarded untouched. Built on the standard library's threading HTTP server plus the `httpx` already depended on — no new dependency, because a governance tool should not grow a web framework and an undeclared transport dependency is its own bug class.
+- **`proxy_guidance`** (read, 21st tool) composes the command and the client-side change, and writes nothing. CLI-only for `serve` itself: it blocks for the lifetime of the listener, so an MCP tool that started it would hang the calling agent — the same line the sibling compliance tool draws with its cron hint.
+
+### Design decisions worth stating plainly
+- **It is a chokepoint, not an enforcement boundary.** A client that can still reach the runtime's real port bypasses the proxy completely, and nothing here can detect that. A control assumed to be mandatory while being trivially bypassable is the false-safety failure this line hunts, so it is in the tool's return value, in the docs, and printed by the CLI on **every** start — not buried. Making it enforcing is an operator task (bind the runtime to localhost, expose only the proxy, or firewall the runtime port); until then captured traffic is a sample, not the population.
+- **Requests are inspected; responses stream through untouched.** These clients default to `stream: true`, and buffering a response to inspect the completion would turn every streaming caller into a blocking one — breaking the thing the proxy was installed to protect. The guard governs prompts, exactly as the opt-in path already does.
+- **An unscannable request on a governed path is refused, not forwarded.** A body that cannot be parsed as JSON, or that exceeds the scan size cap, is rejected: a proxy a malformed body walks straight past is a suggestion rather than a control.
+- **Raw prompts are still never stored.** Captured traffic lands in the ordinary usage log with prompt length, risk band, and redacted findings, so `usage_events` and `anomaly_report` surface it with no new read surface.
+- A failing recorder logs and continues: recording is bookkeeping, and losing it must not drop a client's request.
+
+### Verified
+Driven over **real HTTP** rather than mocks — a stub upstream on a real socket with a real proxy in front of it, plus the actual CLI against a stub runtime:
+- a prompt carrying an AWS access key was blocked with `riskBand: critical` and **never reached the upstream** (asserted on what the upstream received, not merely on the client's 403);
+- a denied model was refused with the policy reason while an allowed model passed;
+- an ungoverned path (`/api/tags`) passed through and recorded nothing;
+- a chunked multi-part response relayed through intact and in order, with upstream headers preserved and hop-by-hop headers dropped;
+- an unreachable upstream produced a 502 naming the proxy, so it cannot be mistaken for a model failure;
+- the usage log contained the lengths, bands, and findings — and a byte search of the database found **no raw prompt text**.
+
+**Still unverified:** no run against a real Ollama. The request/response shapes exercised are this tool's own, not measured from the runtime, so treat the Ollama-specific behaviour (streaming NDJSON semantics in particular) as unconfirmed until `docs/VERIFICATION.md` says otherwise.
+
+### Fixed
+- OpenAI multi-part message content contributed empty strings for non-text parts (an `image_url`), padding the scanned text with blank lines and inflating the recorded `promptChars`. Caught by a unit test on the extractor.
+- `proxy serve` crashed on startup with `'AppConfig' object has no attribute 'name'`: `get_connection` returns `(conn, AppConfig)`, and the resolved target has to come from the config. Caught by running the command rather than only its parts.
+
 ## v0.9.0 — 2026-08-10
 
 ### Fixed

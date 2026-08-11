@@ -11,7 +11,7 @@ local model may run on the endpoint; ai-guardian records *what it did* and gates
 *what goes into the prompt* (secrets, PII, source, jailbreaks) plus *which model*
 may serve it. Self-contained: it talks to each runtime's REST API and needs
 nothing beyond `httpx` and the MCP SDK. v0.1 provides opt-in route-through
-content governance; a transparent capture proxy is on the v0.2 roadmap.
+content governance, plus a transparent capture proxy for clients that did not opt in.
 
 ### Supported runtimes
 
@@ -58,8 +58,13 @@ is client-supplied on every request. So ai-guardian observes on two fronts:
   model is disallowed. The raw prompt is never stored (only its length + redacted
   findings).
 
-> A transparent reverse-proxy shim that captures *other* clients' Ollama traffic
-> passively is a documented **v0.2 roadmap** item, not v0.1.
+> **Now available** (`ai-guardian proxy serve`): a transparent capture proxy that
+> applies the same scan + model policy + recording to traffic from clients that
+> never opted in — point them at the proxy instead of the runtime. It inspects
+> **requests** and streams responses through untouched, and it is a
+> **chokepoint, not an enforcement boundary**: a client that can still reach the
+> runtime's real port bypasses it entirely. `proxy_guidance` returns the command
+> and that caveat; the CLI prints it on every start.
 
 ## Key features
 
@@ -112,9 +117,9 @@ Running a smaller / local model? See
 the guardrails this tool now enforces for you (so you don't spend prompt budget
 restating them) and gives a ready-made system prompt for what's left.
 
-## Capability matrix (20 MCP tools)
+## Capability matrix (21 MCP tools)
 
-### Reads (10)
+### Reads (11)
 
 | Tool | Risk | What it returns |
 |------|:----:|-----------------|
@@ -128,6 +133,7 @@ restating them) and gives a ready-made system prompt for what's left.
 | `scan_prompt` | low | pure text scan → findings + weighted risk band (**no model call**) |
 | `usage_events` | low | query the observed-usage log |
 | `anomaly_report` | low | rollup: shadow models, digest drift, high-risk + blocked prompts |
+| `proxy_guidance` | low | the `proxy serve` command + the client change, and the explicit caveat that the proxy is a **chokepoint, not an enforcement boundary**; writes nothing, starts nothing |
 
 ### Writes (8)
 
@@ -170,7 +176,7 @@ MCP:
 guarded_generate(model="llama3.2:3b", prompt="…", block_threshold="high")
 ```
 
-Run as an MCP server (stdio) — the full 20-tool surface; the CLI is a convenience
+Run as an MCP server (stdio) — the full 21-tool surface; the CLI is a convenience
 subset:
 
 ```bash

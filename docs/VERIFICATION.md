@@ -227,3 +227,48 @@ coverage.
 - The verification story for the whole product line is tracked centrally; add
   this tool's result there once green so the verification-debt ledger stays
   accurate.
+
+## Capture proxy — mechanics verified over real HTTP; Ollama specifics NOT (2026-08-11)
+
+The proxy is exercised as HTTP, not as mocked calls: a stub upstream on a real
+socket with a real `GuardianProxy` in front of it, plus the actual
+`ai-guardian proxy serve` CLI pointed at a stub runtime.
+
+Verified:
+
+- a prompt carrying an AWS access key was blocked (`riskBand: critical`) and
+  **never reached the upstream** — the assertion is on what the upstream
+  received, not on the client's 403, because only the former shows containment;
+- a denied model was refused with the policy reason; an allowed model passed;
+- `/api/tags` (ungoverned) passed through and recorded nothing;
+- a chunked multi-part response relayed intact and in order, upstream headers
+  preserved and hop-by-hop headers dropped;
+- an unreachable upstream returned 502 **naming the proxy**, so it cannot be
+  mistaken for a model failure;
+- a malformed body on a governed path was refused rather than forwarded;
+- the usage log held prompt lengths, bands and redacted findings, and a byte
+  search of the database found **no raw prompt text**.
+
+Two defects were found by doing this rather than reasoning about it: non-text
+OpenAI content parts padded the scanned text and inflated `promptChars`, and
+`proxy serve` crashed on startup because `get_connection` returns
+`(conn, AppConfig)` and the resolved target comes from the config.
+
+**Not verified — no real Ollama was available:**
+
+1. **The runtime's actual streaming semantics.** The stub emits chunked NDJSON
+   because that is what Ollama documents; whether a real streaming generation
+   relays with acceptable latency and without the client mis-framing it is
+   unmeasured. This is the highest-risk gap: it is exactly the shape that broke
+   in other tools of this line only under a live run.
+2. **Header and timeout behaviour under a long generation.** The 300s default was
+   chosen because a local model answering slowly must not look like a proxy
+   timeout — but no real long generation has run through it.
+3. **`/v1/*` OpenAI-compat paths against a runtime that actually serves them.**
+4. **Behaviour with a client that keeps the connection alive across many
+   requests** (HTTP/1.1 keep-alive is enabled; only short-lived curl/httpx
+   clients have been used).
+
+Until those are done, the proxy should be described as verified in its mechanics
+and unverified against a real runtime — which is what the CHANGELOG says.
+
