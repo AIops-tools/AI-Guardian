@@ -377,3 +377,42 @@ def test_a_mid_stream_upstream_failure_does_not_splice_a_second_response():
         proxy.server_close()
         upstream.shutdown()
         upstream.server_close()
+
+
+# ─── the threshold must not be able to silently disable blocking ───────────
+
+
+def test_a_differently_cased_threshold_still_blocks():
+    """`--block-threshold HIGH` differs from `high` only in case. It used to make
+    the comparison raise internally and answer "not at or above", silently
+    disabling risk blocking for every request while the startup banner still
+    announced the threshold."""
+    body = json.dumps({"model": "llama3", "prompt": SECRET_PROMPT}).encode()
+    for threshold in ("high", "HIGH", " High "):
+        verdict = px.decide("/api/generate", body, model_allowed=_allow_all,
+                            block_threshold=threshold)
+        assert verdict["blocked"] is True, f"{threshold!r} failed open"
+
+
+def test_an_unknown_threshold_is_refused_not_treated_as_never_block():
+    body = json.dumps({"model": "llama3", "prompt": SECRET_PROMPT}).encode()
+    for bad in ("hgih", "", "none-ish", None):
+        with pytest.raises(ValueError, match="block_threshold must be one of"):
+            px.decide("/api/generate", body, model_allowed=_allow_all,
+                      block_threshold=bad)
+
+
+def test_a_bad_threshold_fails_at_construction_not_at_request_time():
+    """Better to refuse to start than to serve traffic while enforcing nothing."""
+    with pytest.raises(ValueError, match="block_threshold must be one of"):
+        px.GuardianProxy(("127.0.0.1", 0), "http://127.0.0.1:1",
+                         model_allowed=_allow_all, block_threshold="hgih")
+
+
+def test_an_unrecognised_band_fails_closed():
+    """If the scanner ever produced a band this table does not know, an
+    unclassifiable risk must block rather than pass."""
+    from ai_guardian import scanner
+
+    assert scanner.band_at_or_above("something-new", "high") is True
+    assert scanner.band_at_or_above("low", "high") is False

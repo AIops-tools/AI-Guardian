@@ -27,10 +27,16 @@ _BANDS = ("none", "low", "medium", "high", "critical")
 
 
 def _band_ge(band: str, threshold: str) -> bool:
-    try:
-        return _BANDS.index(band) >= _BANDS.index(threshold)
-    except ValueError:
-        return False
+    """Whether ``band`` meets ``threshold``, with the threshold validated.
+
+    This used to swallow an unknown name and answer False, so a caller passing
+    "HIGH" instead of "high" silently disabled risk blocking for the whole call.
+    An unknown threshold now raises (the caller supplied it and can fix it) and
+    an unknown band fails closed.
+    """
+    return scanner.band_at_or_above(
+        band, scanner.normalize_band(threshold, field="block_threshold")
+    )
 
 
 def scan_prompt(text: str) -> dict:

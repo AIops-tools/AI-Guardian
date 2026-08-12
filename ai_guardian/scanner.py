@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -152,3 +153,43 @@ def summarize(findings: list[Finding]) -> dict:
             for f in findings
         ],
     }
+
+
+#: The risk bands, ordered least to most severe. One definition, because two
+#: copies of an ordering are two chances to disagree about what "high" means.
+BANDS: tuple[str, ...] = ("none", "low", "medium", "high", "critical")
+
+
+def normalize_band(value: Any, *, field: str = "band") -> str:
+    """Normalise a caller-supplied band name, raising on anything unknown.
+
+    Deliberately strict, and validated **up front** rather than at comparison
+    time. The comparison this feeds used to swallow a bad name and answer "not
+    at or above the threshold" — so `--block-threshold HIGH`, differing from
+    `high` only in case, silently disabled risk blocking altogether while the
+    startup banner still announced it. A security control that quietly does
+    nothing after a typo is worse than one that refuses to start.
+    """
+    text = str(value or "").strip().lower()
+    if text not in BANDS:
+        raise ValueError(
+            f"{field} must be one of {', '.join(BANDS)} (got {value!r}). "
+            f"Comparison is case-insensitive, but an unrecognised name is "
+            f"refused rather than treated as 'never block'."
+        )
+    return text
+
+
+def band_at_or_above(band: Any, threshold: str) -> bool:
+    """Whether ``band`` is at least as severe as ``threshold``.
+
+    ``threshold`` is expected to be already normalised (callers validate it when
+    they are constructed, so a bad value fails at startup). An unrecognised
+    **band** — which would mean the scanner produced something this table does
+    not know — **fails closed**: an unclassifiable risk is treated as blocking,
+    not waved through.
+    """
+    text = str(band or "").strip().lower()
+    if text not in BANDS:
+        return True
+    return BANDS.index(text) >= BANDS.index(threshold)

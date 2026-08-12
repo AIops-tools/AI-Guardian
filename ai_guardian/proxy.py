@@ -62,14 +62,8 @@ _HOP_BY_HOP = frozenset({
     "te", "trailer", "transfer-encoding", "upgrade", "host", "content-length",
 })
 
-_BANDS = ("none", "low", "medium", "high", "critical")
-
-
-def _band_ge(band: str, threshold: str) -> bool:
-    try:
-        return _BANDS.index(band) >= _BANDS.index(threshold)
-    except ValueError:
-        return False
+#: Re-exported for callers; the ordering itself lives in `scanner`.
+_BANDS = scanner.BANDS
 
 
 def extract_prompt(path: str, body: bytes) -> dict:
@@ -163,7 +157,12 @@ def decide(
     summary = scanner.summarize(scanner.scan_text(extracted["text"]))
     band = summary["riskBand"]
     allowed_model = bool(model_allowed(extracted["model"])) if extracted["model"] else True
-    risk_blocked = _band_ge(band, block_threshold)
+    # Normalised here as well as at construction: `decide` is public, and a
+    # caller reaching it directly must not be able to disable blocking with a
+    # differently-cased word.
+    risk_blocked = scanner.band_at_or_above(
+        band, scanner.normalize_band(block_threshold, field="block_threshold")
+    )
     blocked = (not allowed_model) or risk_blocked
     reason = None
     if not allowed_model:
@@ -338,10 +337,15 @@ class GuardianProxy(ThreadingHTTPServer):
         on_event: Any = None,
         timeout_seconds: float = 300.0,
     ) -> None:
+        # Validated here, not at comparison time: an unknown threshold used to
+        # mean "never block", so the proxy would start, announce a threshold, and
+        # enforce nothing. Failing at startup is the only honest option.
+        self.block_threshold = scanner.normalize_band(
+            block_threshold, field="block_threshold"
+        )
         super().__init__(listen, _Handler)
         self.upstream = upstream.rstrip("/")
         self.model_allowed = model_allowed
-        self.block_threshold = block_threshold
         self._on_event = on_event
         # A generous read timeout: a local model generating a long answer is slow,
         # and a proxy that times out mid-generation looks like a model failure.
