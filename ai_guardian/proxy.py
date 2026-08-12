@@ -256,6 +256,11 @@ class _Handler(BaseHTTPRequestHandler):
         """
         srv = self.server  # type: ignore[assignment]
         client: httpx.Client = srv.client  # type: ignore[attr-defined]
+        # Once the status line is out, a 502 can no longer be sent: it would write
+        # a second response into a body the client is already reading, and the
+        # client would parse the error text as generated content. A failure after
+        # this point can only be signalled by NOT terminating the chunked stream.
+        headers_sent = False
         try:
             with client.stream(
                 method, self.path, content=body or None,
@@ -268,6 +273,11 @@ class _Handler(BaseHTTPRequestHandler):
                 self.send_header("Transfer-Encoding", "chunked")
                 self.send_header("X-AI-Guardian", "pass")
                 self.end_headers()
+                headers_sent = True
+                if method == "HEAD":
+                    # A HEAD response carries no body, not even a chunked
+                    # terminator — writing one would desynchronise the connection.
+                    return
                 for chunk in upstream.iter_raw():
                     if not chunk:
                         continue
@@ -276,13 +286,24 @@ class _Handler(BaseHTTPRequestHandler):
                     self.wfile.write(b"\r\n")
                 self.wfile.write(b"0\r\n\r\n")
         except httpx.HTTPError as exc:
-            self._send_json(502, {
-                "error": (
-                    f"ai-guardian proxy could not reach the upstream runtime: "
-                    f"{s(exc, 200)}"
-                ),
-                "blockedBy": None,
-            })
+            if not headers_sent:
+                self._send_json(502, {
+                    "error": (
+                        f"ai-guardian proxy could not reach the upstream runtime: "
+                        f"{s(exc, 200)}"
+                    ),
+                    "blockedBy": None,
+                })
+                return
+            # Mid-stream: leave the chunked body unterminated and drop the
+            # connection. A client sees a truncated response — which is the truth —
+            # rather than a well-formed one that silently lost its tail.
+            logger.warning(
+                "upstream failed mid-stream on %s; leaving the response "
+                "unterminated so the client sees it as truncated: %s",
+                self.path, exc,
+            )
+            self.close_connection = True
 
     # ── methods ──────────────────────────────────────────────────────────
     def do_POST(self) -> None:  # noqa: N802 — BaseHTTPRequestHandler API

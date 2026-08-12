@@ -292,3 +292,88 @@ def test_guidance_states_the_bypass_plainly_and_starts_nothing(tmp_path):
     assert "/api/generate" in out["governedPaths"]
     # The response contract is stated, not left to be discovered.
     assert "responses stream through untouched" in out["responseHandling"]
+
+
+# ─── a failure AFTER the headers are out cannot become a 502 ───────────────
+
+
+class _DiesMidStream(BaseHTTPRequestHandler):
+    """Sends 200 + one chunk, then drops the connection."""
+
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *args):  # noqa: A003, ANN002
+        pass
+
+    def do_POST(self):  # noqa: N802
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+        chunk = b'{"response":"first"}\n'
+        self.wfile.write(f"{len(chunk):x}\r\n".encode())
+        self.wfile.write(chunk)
+        self.wfile.write(b"\r\n")
+        self.wfile.flush()
+        self.close_connection = True
+        self.connection.close()   # die without the terminator
+
+
+def test_a_mid_stream_upstream_failure_does_not_splice_a_second_response():
+    """Once the status line is out a 502 cannot be sent: it would write a whole
+    second HTTP response into a body the client is already reading.
+
+    Asserted on the RAW BYTES, not on a decoded body — an earlier version of this
+    test checked the decoded text and passed against the broken code too, because
+    the spliced response corrupts the chunked framing before any decoder reaches
+    it. The wire is the only place the difference is visible.
+    """
+    import socket
+
+    upstream = ThreadingHTTPServer(("127.0.0.1", 0), _DiesMidStream)
+    upstream.daemon_threads = True
+    threading.Thread(target=upstream.serve_forever, daemon=True).start()
+    proxy = px.GuardianProxy(
+        ("127.0.0.1", 0), f"http://127.0.0.1:{upstream.server_address[1]}",
+        model_allowed=_allow_all, on_event=None, timeout_seconds=10.0,
+    )
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    host, port = proxy.server_address[0], proxy.server_address[1]
+    try:
+        payload = json.dumps({"model": "llama3", "prompt": CLEAN_PROMPT}).encode()
+        request = (
+            b"POST /api/generate HTTP/1.1\r\n"
+            b"Host: localhost\r\nContent-Type: application/json\r\n"
+            b"Content-Length: " + str(len(payload)).encode() + b"\r\n\r\n" + payload
+        )
+        sock = socket.create_connection((host, port), timeout=10)
+        sock.sendall(request)
+        raw = b""
+        sock.settimeout(6)
+        try:
+            while True:
+                piece = sock.recv(65536)
+                if not piece:
+                    break
+                raw += piece
+        except TimeoutError:
+            pass
+        finally:
+            sock.close()
+
+        text = raw.decode("utf-8", "replace")
+        assert text.startswith("HTTP/1.1 200"), text[:80]
+        assert "first" in text
+        # Exactly ONE response on this connection. The broken version wrote a
+        # second status line and a 502 JSON body into the chunked stream.
+        assert text.count("HTTP/1.1 ") == 1, f"a second response was spliced in:\n{text}"
+        assert "502" not in text
+        assert "could not reach the upstream" not in text
+        # And the stream is left UNTERMINATED, which is how a truncated response
+        # is signalled — a "0\r\n\r\n" here would claim it completed cleanly.
+        assert not text.rstrip().endswith("0"), "the stream claimed a clean end"
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+        upstream.shutdown()
+        upstream.server_close()

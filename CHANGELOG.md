@@ -31,6 +31,8 @@ Driven over **real HTTP** rather than mocks — a stub upstream on a real socket
 **Still unverified:** the other supported runtimes (llama.cpp, LM Studio, vLLM) through the proxy, and any non-loopback or multi-client deployment.
 
 ### Fixed
+- **A mid-stream upstream failure spliced a second HTTP response into the body.** The 502 handler ran regardless of whether the status line had already gone out, so a runtime that died part-way through a generation caused a whole second response — status line, headers and JSON error — to be written into a chunked body the client was already reading. A failure after the headers can only be signalled by leaving the stream unterminated, which is what a truncated response actually is; writing the terminator would claim it completed cleanly. **The first version of the regression test passed against the broken code**: the spliced bytes corrupt the chunked framing before any decoder reaches them, so a decoded-body assertion sees nothing. It now asserts on the raw wire and counts status lines.
+- HEAD responses no longer receive a chunked terminator, which would desynchronise the connection.
 - OpenAI multi-part message content contributed empty strings for non-text parts (an `image_url`), padding the scanned text with blank lines and inflating the recorded `promptChars`. Caught by a unit test on the extractor.
 - `proxy serve` crashed on startup with `'AppConfig' object has no attribute 'name'`: `get_connection` returns `(conn, AppConfig)`, and the resolved target has to come from the config. Caught by running the command rather than only its parts.
 
