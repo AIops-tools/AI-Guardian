@@ -161,6 +161,21 @@ Blocked calls never reach Ollama and are recorded as blocked in the usage log.
 
 ## Quick start
 
+### As a Claude Code plugin
+
+One install gives an agent both the skill and the MCP server:
+
+```
+/plugin marketplace add AIops-tools/marketplace
+/plugin install ai-guardian@aiops-tools
+```
+
+The MCP server is fetched with [uv](https://docs.astral.sh/uv/) and pinned to the
+package version this plugin declares, so an audit row can be traced back to the
+code that wrote it. Credentials are still configured with `ai-guardian init` — see below.
+
+### As a CLI or standalone MCP server
+
 ```bash
 uv tool install ai-guardian-aiops          # or: pipx install ai-guardian-aiops
 ai-guardian doctor                   # Ollama reachability + policy summary (works zero-config)

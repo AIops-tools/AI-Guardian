@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ai-guardian": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "ai-guardian-aiops==0.10.0",
+        "ai-guardian-mcp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "ai-guardian",
+  "displayName": "AI Guardian",
+  "version": "0.10.0",
+  "description": "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools.",
+  "author": {
+    "name": "Wei Zhou",
+    "email": "zhouwei008@gmail.com",
+    "url": "https://github.com/AIops-tools"
+  },
+  "homepage": "https://github.com/AIops-tools/AI-Guardian",
+  "repository": "https://github.com/AIops-tools/AI-Guardian",
+  "license": "MIT",
+  "keywords": [
+    "aiops",
+    "mcp",
+    "governance",
+    "ai-guardian"
+  ]
+}
