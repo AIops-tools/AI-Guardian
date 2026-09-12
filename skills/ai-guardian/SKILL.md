@@ -76,6 +76,13 @@ ai-guardian doctor          # works zero-config against a local Ollama
 ai-guardian init            # optional: endpoint(s) + optional token + model allowlist
 ```
 
+Or as an OpenClaw plugin, which installs this skill and its MCP server together:
+
+```bash
+openclaw plugins install clawhub:@aiops-tools/ai-guardian
+openclaw skills info ai-guardian          # expect: Visible to model: yes
+```
+
 ## When to Use This Skill
 
 - Inventory local models and **spot shadow AI** (`list_models` / `anomaly_report`): unsanctioned models show `allowed:false`
