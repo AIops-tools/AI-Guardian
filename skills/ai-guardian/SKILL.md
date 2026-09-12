@@ -79,7 +79,7 @@ ai-guardian init            # optional: endpoint(s) + optional token + model all
 Or as an OpenClaw plugin, which installs this skill and its MCP server together:
 
 ```bash
-openclaw plugins install clawhub:@aiops-tools/ai-guardian
+openclaw plugins install clawhub:@zw008/ai-guardian
 openclaw skills info ai-guardian          # expect: Visible to model: yes
 ```
 
