@@ -199,6 +199,11 @@ ai-guardian model list               # installed models with allow/deny verdicts
 ai-guardian guard scan "my key is AKIAIOSFODNN7EXAMPLE"   # deterministic scan → risk band
 ```
 
+> **The command and the package have different names.** The CLI, the skill and
+> this repo are all `ai-guardian`; the PyPI distribution is **`ai-guardian-aiops`**
+> because `ai-guardian` was already taken. Both spellings below are correct and
+> intentional — install `ai-guardian-aiops`, then run `ai-guardian`.
+
 Route a prompt through the guard (scan + policy-gate + record + run-if-allowed) via
 MCP:
 
