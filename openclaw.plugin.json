@@ -1,0 +1,24 @@
+{
+  "id": "ai-guardian",
+  "name": "AI Guardian",
+  "description": "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools.",
+  "skills": [
+    "./skills"
+  ],
+  "mcpServers": {
+    "ai-guardian": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "ai-guardian-aiops==0.11.0",
+        "ai-guardian-mcp"
+      ]
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

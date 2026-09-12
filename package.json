@@ -1,0 +1,20 @@
+{
+  "name": "@aiops-tools/ai-guardian",
+  "version": "0.11.0",
+  "description": "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools.",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://github.com/AIops-tools/AI-Guardian",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AIops-tools/AI-Guardian.git"
+  },
+  "openclaw": {
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2"
+    },
+    "build": {
+      "openclawVersion": "2026.3.24-beta.2"
+    }
+  }
+}

@@ -17,7 +17,7 @@ installer:
 argument-hint: "[model name, a prompt to scan, or describe your local-LLM task]"
 allowed-tools:
   - Bash
-metadata: {"openclaw":{"requires":{"env":[],"bins":["ai-guardian"],"config":["~/.ai-guardian/config.yaml"]},"optional":{"env":["AI_GUARDIAN_AIOPS_MASTER_PASSWORD"],"config":["~/.ai-guardian/secrets.enc","~/.ai-guardian/usage.db"]},"homepage":"https://github.com/AIops-tools/AI-Guardian","emoji":"🛡️","os":["macos","linux"]}}
+metadata: {"openclaw":{"requires":{"anyBins":["ai-guardian","uvx"]},"optional":{"env":["AI_GUARDIAN_AIOPS_MASTER_PASSWORD"]},"homepage":"https://github.com/AIops-tools/AI-Guardian","emoji":"🛡️","os":["macos","linux"]}}
 compatibility: >
   Standalone, self-governed local-LLM (Ollama) observability + content governance. The governance harness (audit, policy, token/runaway budget, undo, risk-tiers) is bundled in the package — no external skill-family dependency.
   Every tool call is audited to a local SQLite DB at ~/.ai-guardian/audit.db (relocatable via AI_GUARDIAN_AIOPS_HOME); the OBSERVED local-LLM usage log is a SEPARATE DB at ~/.ai-guardian/usage.db.
