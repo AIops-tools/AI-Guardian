@@ -83,6 +83,8 @@ openclaw plugins install clawhub:@aiops-tools/ai-guardian
 openclaw skills info ai-guardian          # expect: Visible to model: yes
 ```
 
+Needs `uvx` on `PATH`: the MCP server is fetched with uv, pinned to this release.
+
 ## When to Use This Skill
 
 - Inventory local models and **spot shadow AI** (`list_models` / `anomaly_report`): unsanctioned models show `allowed:false`
