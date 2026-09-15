@@ -16,6 +16,7 @@ import typer
 
 from ai_guardian.cli._common import (
     TargetOption,
+    audited,
     cli_errors,
     console,
     get_connection,
@@ -31,6 +32,7 @@ proxy_app = typer.Typer(
 
 @proxy_app.command("hint")
 @cli_errors
+@audited
 def proxy_hint(
     listen_host: Annotated[str, typer.Option("--host", help="Listen address")] = "127.0.0.1",
     listen_port: Annotated[int, typer.Option("--port", help="Listen port")] = 11435,
@@ -47,6 +49,7 @@ def proxy_hint(
 
 @proxy_app.command("serve")
 @cli_errors
+@audited
 def proxy_serve(
     listen: Annotated[
         str, typer.Option("--listen", help="host:port to listen on")

@@ -7,7 +7,7 @@ from typing import Annotated
 
 import typer
 
-from ai_guardian.cli._common import TargetOption, cli_errors, console, get_connection
+from ai_guardian.cli._common import TargetOption, audited, cli_errors, console, get_connection
 
 guard_app = typer.Typer(
     name="guard",
@@ -18,6 +18,7 @@ guard_app = typer.Typer(
 
 @guard_app.command("policy")
 @cli_errors
+@audited
 def guard_policy() -> None:
     """Show the current model allow/deny policy + digest pins."""
     from ai_guardian.config import load_config
@@ -28,6 +29,7 @@ def guard_policy() -> None:
 
 @guard_app.command("provenance")
 @cli_errors
+@audited
 def guard_provenance(target: TargetOption = None) -> None:
     """Check installed model digests against their pins (drift detection)."""
     from ai_guardian.ops import policy as ops
@@ -38,6 +40,7 @@ def guard_provenance(target: TargetOption = None) -> None:
 
 @guard_app.command("scan")
 @cli_errors
+@audited
 def guard_scan(
     text: Annotated[str, typer.Argument(help="Text to scan for secrets/PII/jailbreak")],
 ) -> None:
@@ -49,6 +52,7 @@ def guard_scan(
 
 @guard_app.command("usage")
 @cli_errors
+@audited
 def guard_usage(
     limit: Annotated[int, typer.Option("--limit", help="Max rows")] = 50,
 ) -> None:
@@ -61,6 +65,7 @@ def guard_usage(
 
 @guard_app.command("anomalies")
 @cli_errors
+@audited
 def guard_anomalies(target: TargetOption = None) -> None:
     """Rollup: shadow models, digest drift, high-risk + blocked prompts."""
     from ai_guardian.ops import observe as ops

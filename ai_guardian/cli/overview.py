@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 
-from ai_guardian.cli._common import TargetOption, cli_errors, console, get_connection
+from ai_guardian.cli._common import TargetOption, audited, cli_errors, console, get_connection
 
 
 @cli_errors
+@audited
 def overview_cmd(target: TargetOption = None) -> None:
     """One-shot posture: models installed/running, shadow count, observed-usage stats."""
     from ai_guardian.ops import overview as ops

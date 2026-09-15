@@ -10,6 +10,7 @@ import typer
 from ai_guardian.cli._common import (
     DryRunOption,
     TargetOption,
+    audited,
     checked,
     cli_errors,
     console,
@@ -29,6 +30,7 @@ NameArg = Annotated[str, typer.Argument(help="Model name (e.g. llama3.2:3b)")]
 
 @model_app.command("list")
 @cli_errors
+@audited
 def model_list(target: TargetOption = None) -> None:
     """List installed models with the allow/deny verdict."""
     from ai_guardian.ops import models as ops
@@ -39,6 +41,7 @@ def model_list(target: TargetOption = None) -> None:
 
 @model_app.command("running")
 @cli_errors
+@audited
 def model_running(target: TargetOption = None) -> None:
     """Show loaded models (VRAM + expiry)."""
     from ai_guardian.ops import models as ops
@@ -49,6 +52,7 @@ def model_running(target: TargetOption = None) -> None:
 
 @model_app.command("details")
 @cli_errors
+@audited
 def model_details(model: NameArg, target: TargetOption = None) -> None:
     """Show a model's license / parameters / capabilities."""
     from ai_guardian.ops import models as ops
