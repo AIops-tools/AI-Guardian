@@ -181,7 +181,7 @@ def test_usage_events_fetches_one_extra_row_to_measure():
 
 @pytest.mark.unit
 def test_undo_list_envelope_measures_truncation(monkeypatch):
-    from mcp_server.tools import undo as undo_tools
+    from ai_guardian.mcp_server.tools import undo as undo_tools
 
     rows = [
         {

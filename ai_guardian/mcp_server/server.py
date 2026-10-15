@@ -1,6 +1,6 @@
 """MCP server wrapping ai-guardian operations (stdio transport).
 
-Thin adapter layer: each ``@mcp.tool()`` function (in ``mcp_server/tools/``)
+Thin adapter layer: each ``@mcp.tool()`` function (in ``ai_guardian/mcp_server/tools/``)
 delegates to the ``ai_guardian`` ops package and is wrapped with the
 ai-guardian ``@governed_tool`` harness (audit / budget / undo / risk-tier).
 
@@ -14,12 +14,12 @@ License: MIT
 import logging
 import os
 
-from mcp_server._annotations import apply_risk_annotations
-from mcp_server._shared import _safe_error, mcp, tool_errors
+from ai_guardian.mcp_server._annotations import apply_risk_annotations
+from ai_guardian.mcp_server._shared import _safe_error, mcp, tool_errors
 
 # Importing the tool modules registers every @mcp.tool() onto the shared
 # `mcp` instance. Order does not matter; each module is self-contained.
-from mcp_server.tools import (  # noqa: F401 — side effects
+from ai_guardian.mcp_server.tools import (  # noqa: F401 — side effects
     models,
     observe,
     policy,

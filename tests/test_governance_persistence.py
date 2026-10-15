@@ -127,7 +127,7 @@ def test_real_write_tool_persists_priorstate_undo(gov_home, monkeypatch, fake_ol
     manifest = {"license": "MIT License", "details": {"family": "llama"}, "capabilities": []}
     fake = fake_ollama(responses={"/api/show": manifest})
 
-    from mcp_server.tools import models as gov
+    from ai_guardian.mcp_server.tools import models as gov
 
     monkeypatch.setattr(gov, "_get_connection", lambda target=None: fake)
     result = gov.remove_model(model="llama3.2:3b")

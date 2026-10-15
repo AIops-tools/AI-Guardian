@@ -2,7 +2,7 @@
 
 Portable across the whole tool line: references ONLY
 ``ai_guardian.governance.patterns`` and binds state to an isolated home via
-``AI_GUARDIAN_AIOPS_HOME``. No ops / cli / connection / mcp_server imports.
+``AI_GUARDIAN_AIOPS_HOME``. No ops / cli / connection / ai_guardian.mcp_server imports.
 
 Exercises pattern loading + signature validation, the armable preconditions,
 skill/tool/target matching, rate limiting, the circuit breaker's state

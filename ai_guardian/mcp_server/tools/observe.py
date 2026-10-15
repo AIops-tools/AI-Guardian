@@ -3,8 +3,14 @@
 from typing import Optional
 
 from ai_guardian.governance import governed_tool
+from ai_guardian.mcp_server._shared import (
+    _get_config,
+    _get_connection,
+    _get_store,
+    mcp,
+    tool_errors,
+)
 from ai_guardian.ops import observe as ops
-from mcp_server._shared import _get_config, _get_connection, _get_store, mcp, tool_errors
 
 
 @mcp.tool()

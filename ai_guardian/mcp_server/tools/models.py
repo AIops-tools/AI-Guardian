@@ -3,8 +3,8 @@
 from typing import Any, Optional
 
 from ai_guardian.governance import governed_tool
+from ai_guardian.mcp_server._shared import _get_config, _get_connection, mcp, tool_errors
 from ai_guardian.ops import models as ops
-from mcp_server._shared import _get_config, _get_connection, mcp, tool_errors
 
 
 def _remove_undo(params: dict[str, Any], result: Any) -> Optional[dict]:

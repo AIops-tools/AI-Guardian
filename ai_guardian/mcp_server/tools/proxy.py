@@ -11,8 +11,8 @@ captures is recorded to the ordinary usage log, so `observed_usage` and
 from typing import Optional
 
 from ai_guardian.governance import governed_tool
+from ai_guardian.mcp_server._shared import _get_config, mcp, tool_errors
 from ai_guardian.ops import proxy as ops
-from mcp_server._shared import _get_config, mcp, tool_errors
 
 
 @mcp.tool()

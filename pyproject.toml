@@ -28,10 +28,10 @@ dev = [
 
 [project.scripts]
 ai-guardian = "ai_guardian.cli:app"
-ai-guardian-mcp = "mcp_server.server:main"
+ai-guardian-mcp = "ai_guardian.mcp_server.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["ai_guardian", "mcp_server"]
+packages = ["ai_guardian"]
 
 [tool.ruff]
 line-length = 100
@@ -50,7 +50,7 @@ select = ["E", "F", "I", "N", "W", "UP"]
 "ai_guardian/scanner.py" = ["E501"]
 # MCP server files are reflected by FastMCP/Pydantic; PEP 604 unions (X | None)
 # crash on older mcp/pydantic, so they intentionally use Optional[X].
-"mcp_server/**/*.py" = ["UP007", "UP045"]
+"ai_guardian/mcp_server/**/*.py" = ["UP007", "UP045"]
 # The MCP entry keeps an explicit Python-version guard even though the declared
 # minimum is already 3.11.
 "ai_guardian/cli/_root.py" = ["UP036"]

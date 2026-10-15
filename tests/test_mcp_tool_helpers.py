@@ -10,9 +10,9 @@ import pytest
 import ai_guardian.governance.audit as audit_mod
 import ai_guardian.governance.policy as policy_mod
 import ai_guardian.governance.undo as undo_mod
-from mcp_server.tools import models as model_tools
-from mcp_server.tools import observe as observe_tools
-from mcp_server.tools import policy as policy_tools
+from ai_guardian.mcp_server.tools import models as model_tools
+from ai_guardian.mcp_server.tools import observe as observe_tools
+from ai_guardian.mcp_server.tools import policy as policy_tools
 
 pytestmark = pytest.mark.unit
 

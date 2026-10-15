@@ -3,7 +3,7 @@
 Portable across the whole tool line: references ONLY
 ``ai_guardian.governance.*`` and binds state to an isolated home via
 ``AI_GUARDIAN_AIOPS_HOME``. Every governed function under test is SYNTHETIC and
-defined inline — no real ops / cli / connection / mcp_server tool is imported.
+defined inline — no real ops / cli / connection / ai_guardian.mcp_server tool is imported.
 
 Exercises the async wrapper (audit parity with sync), the error-capture path
 with secret redaction, BudgetExceeded + PolicyDenied propagation, positional /

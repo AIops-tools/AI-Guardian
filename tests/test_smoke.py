@@ -34,8 +34,10 @@ def test_all_modules_import():
         "ai_guardian.ops.overview",
         "ai_guardian.cli", "ai_guardian.cli._root", "ai_guardian.cli.init",
         "ai_guardian.cli.model", "ai_guardian.cli.guard", "ai_guardian.cli.overview",
-        "mcp_server.server", "mcp_server._shared",
-        "mcp_server.tools.models", "mcp_server.tools.policy", "mcp_server.tools.observe",
+        "ai_guardian.mcp_server.server", "ai_guardian.mcp_server._shared",
+        "ai_guardian.mcp_server.tools.models",
+        "ai_guardian.mcp_server.tools.policy",
+        "ai_guardian.mcp_server.tools.observe",
     ):
         importlib.import_module(name)
 
@@ -71,8 +73,8 @@ def test_cli_app_and_leaf_help():
 
 @pytest.mark.unit
 def test_mcp_exposes_and_governs_all_tools():
-    from mcp_server import _shared
-    from mcp_server.server import mcp  # noqa: F401 — registers tools
+    from ai_guardian.mcp_server import _shared
+    from ai_guardian.mcp_server.server import mcp  # noqa: F401 — registers tools
 
     tools = _shared.mcp._tool_manager._tools
     assert EXPECTED_TOOLS <= set(tools), f"missing: {EXPECTED_TOOLS - set(tools)}"
@@ -83,8 +85,8 @@ def test_mcp_exposes_and_governs_all_tools():
 
 @pytest.mark.unit
 def test_risk_tiers():
-    from mcp_server.tools import models as m
-    from mcp_server.tools import observe as o
+    from ai_guardian.mcp_server.tools import models as m
+    from ai_guardian.mcp_server.tools import observe as o
 
     assert m.remove_model._risk_level == "high"
     assert m.pull_model._risk_level == "medium"
@@ -271,7 +273,7 @@ def test_risk_level_agrees_with_read_write_docstring_tag():
     16 such mislabels line-wide once, so it is kept even though read-only mode
     (its original motivation) is gone.
     """
-    from mcp_server import server
+    from ai_guardian.mcp_server import server
 
     untagged, mismatched = [], []
     for name, tool in server.mcp._tool_manager._tools.items():

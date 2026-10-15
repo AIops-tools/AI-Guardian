@@ -2,7 +2,7 @@
 
 Portable across the whole tool line: references ONLY
 ``ai_guardian.governance.audit`` and binds state to an isolated home via
-``AI_GUARDIAN_AIOPS_HOME``. No ops / cli / connection / mcp_server imports.
+``AI_GUARDIAN_AIOPS_HOME``. No ops / cli / connection / ai_guardian.mcp_server imports.
 
 Exercises row writes with every column, query filters, stats aggregation,
 size-based rotation + archive cleanup, permission hardening, in-place column

@@ -65,7 +65,7 @@ def model_details(model: NameArg, target: TargetOption = None) -> None:
 @cli_errors
 def model_pull(model: NameArg, target: TargetOption = None) -> None:
     """Pull a model (refused if it violates policy)."""
-    from mcp_server.tools import models as gov
+    from ai_guardian.mcp_server.tools import models as gov
 
     console.print_json(json.dumps(checked(gov.pull_model(model=model, target=target))))
 
@@ -75,7 +75,7 @@ def model_pull(model: NameArg, target: TargetOption = None) -> None:
 def model_remove(model: NameArg, target: TargetOption = None,
                  dry_run: DryRunOption = False) -> None:
     """Delete a local model (dry-run + double confirm)."""
-    from mcp_server.tools import models as gov
+    from ai_guardian.mcp_server.tools import models as gov
 
     if dry_run:
         # Through the governed call: the preview carries the reversible verdict,
@@ -93,6 +93,6 @@ def model_remove(model: NameArg, target: TargetOption = None,
 @cli_errors
 def model_unload(model: NameArg, target: TargetOption = None) -> None:
     """Evict a model from VRAM (keep_alive:0)."""
-    from mcp_server.tools import models as gov
+    from ai_guardian.mcp_server.tools import models as gov
 
     console.print_json(json.dumps(checked(gov.unload_model(model=model, target=target))))

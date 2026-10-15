@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 
 from ai_guardian.config import AppConfig
+from ai_guardian.mcp_server.tools.models import _remove_undo
 from ai_guardian.ops import models as model_ops
-from mcp_server.tools.models import _remove_undo
 
 pytestmark = pytest.mark.unit
 
@@ -124,7 +124,7 @@ def test_a_result_without_the_verdict_still_gets_its_undo():
 
 def test_the_containment_sequence_records_no_undo(gov_home, monkeypatch, fake_ollama):
     """denylist llama3* then remove llama3 — the exact reported reproduction."""
-    import mcp_server.tools.models as gov
+    import ai_guardian.mcp_server.tools.models as gov
 
     conn = fake_ollama(responses={"/api/show": _SHOW})
     monkeypatch.setattr(gov, "_get_connection", lambda target=None: conn)
@@ -151,7 +151,7 @@ def test_the_containment_sequence_records_no_undo(gov_home, monkeypatch, fake_ol
 def test_an_allowed_removal_still_records_its_re_pull(gov_home, monkeypatch, fake_ollama):
     """Exactness: the honest path must not cost the reversible case its undo."""
     import ai_guardian.governance.undo as undo_mod
-    import mcp_server.tools.models as gov
+    import ai_guardian.mcp_server.tools.models as gov
 
     conn = fake_ollama(responses={"/api/show": _SHOW})
     monkeypatch.setattr(gov, "_get_connection", lambda target=None: conn)
@@ -175,7 +175,7 @@ def test_an_allowed_removal_still_records_its_re_pull(gov_home, monkeypatch, fak
 
 
 def test_the_dry_run_preview_carries_the_verdict(gov_home, monkeypatch, fake_ollama):
-    import mcp_server.tools.models as gov
+    import ai_guardian.mcp_server.tools.models as gov
 
     conn = fake_ollama(responses={"/api/show": _SHOW})
     monkeypatch.setattr(gov, "_get_connection", lambda target=None: conn)
@@ -188,7 +188,7 @@ def test_the_dry_run_preview_carries_the_verdict(gov_home, monkeypatch, fake_oll
 
 def test_the_dry_run_preview_is_positive_for_an_allowed_model(gov_home, monkeypatch,
                                                               fake_ollama):
-    import mcp_server.tools.models as gov
+    import ai_guardian.mcp_server.tools.models as gov
 
     conn = fake_ollama(responses={"/api/show": _SHOW})
     monkeypatch.setattr(gov, "_get_connection", lambda target=None: conn)
@@ -203,7 +203,7 @@ def test_the_cli_preview_warns_before_deleting(gov_home, monkeypatch, fake_ollam
     """The operator must learn there is no undo BEFORE confirming the removal."""
     from typer.testing import CliRunner
 
-    import mcp_server.tools.models as gov
+    import ai_guardian.mcp_server.tools.models as gov
     from ai_guardian.cli import app
 
     conn = fake_ollama(responses={"/api/show": _SHOW})

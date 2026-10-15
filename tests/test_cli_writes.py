@@ -1,7 +1,7 @@
 """CLI confirmed-write path — past dry-run, through governance, onto disk.
 
 The CLI write commands delegate real execution to the ``@governed_tool``
-functions in ``mcp_server.tools``. These tests drive a write command PAST the
+functions in ``ai_guardian.mcp_server.tools``. These tests drive a write command PAST the
 dry-run branch and the double-confirm prompts and assert the call really went
 through the governed path (audit row on disk) — the regression test for the
 "CLI writes were unaudited" line-wide fix.
@@ -52,7 +52,7 @@ def test_cli_model_remove_dry_run_is_audited_but_never_writes(gov_home, monkeypa
     from ai_guardian.cli import app
 
     fake = fake_ollama()
-    import mcp_server.tools.models as gov_models
+    import ai_guardian.mcp_server.tools.models as gov_models
 
     monkeypatch.setattr(gov_models, "_get_connection", lambda target=None: fake)
     result = CliRunner().invoke(app, ["model", "remove", "llama3.2:3b", "--dry-run"])
@@ -72,7 +72,7 @@ def test_cli_model_remove_confirmed_goes_through_governance(gov_home, monkeypatc
 
     manifest = {"license": "MIT License", "details": {"family": "llama"}}
     fake = fake_ollama(responses={"/api/show": manifest})
-    import mcp_server.tools.models as gov_models
+    import ai_guardian.mcp_server.tools.models as gov_models
 
     monkeypatch.setattr(gov_models, "_get_connection", lambda target=None: fake)
     result = CliRunner().invoke(app, ["model", "remove", "llama3.2:3b"], input="y\ny\n")
@@ -86,7 +86,7 @@ def test_cli_model_remove_aborts_without_double_confirm(gov_home, monkeypatch, f
     from ai_guardian.cli import app
 
     fake = fake_ollama()
-    import mcp_server.tools.models as gov_models
+    import ai_guardian.mcp_server.tools.models as gov_models
 
     monkeypatch.setattr(gov_models, "_get_connection", lambda target=None: fake)
     result = CliRunner().invoke(app, ["model", "remove", "llama3.2:3b"], input="y\nn\n")
