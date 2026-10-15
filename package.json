@@ -1,6 +1,6 @@
 {
   "name": "@zw008/ai-guardian",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools.",
   "private": true,
   "license": "MIT",
