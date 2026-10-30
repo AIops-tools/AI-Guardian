@@ -31,6 +31,8 @@ compatibility: >
 
 # AI Guardian
 
+> **Audit availability:** Real writes require a durable audit intent. Reads and previews can continue if audit storage fails; check the warning and audit health before relying on their audit trail.
+
 > **Disclaimer**: Community-maintained open-source project, **not affiliated with, endorsed by, or sponsored by Ollama, IGEL, or any AI-security vendor.** Product and trademark names belong to their owners. Source at [github.com/AIops-tools/AI-Guardian](https://github.com/AIops-tools/AI-Guardian) under the MIT license.
 
 Governed observability + governance for **on-endpoint local LLMs (Ollama)** —
@@ -201,7 +203,7 @@ read-only switch, deny-rules file, or approval gate — content governance (the
 model allow/deny policy and the `guarded_generate` block threshold) is a
 separate, product-level control that stays.
 
-- **Audit is the guarantee, and it is not bypassable.** Every operation — MCP and CLI alike — is logged to `~/.ai-guardian/audit.db` (relocatable via `AI_GUARDIAN_AIOPS_HOME`): params, result, status, duration, and the risk tier. Observed local-LLM usage lives in a **separate** `~/.ai-guardian/usage.db`.
+- **Audit is the guarantee, and it is not bypassable.** Every operation — MCP and CLI alike — is logged to `~/.ai-guardian/audit.db` (relocatable via `AI_GUARDIAN_AIOPS_HOME`): params, outcome summary, status, duration, and the risk tier. Observed local-LLM usage lives in a **separate** `~/.ai-guardian/usage.db`.
 - `AI_GUARDIAN_AUDIT_APPROVED_BY` / `AI_GUARDIAN_AUDIT_RATIONALE` are optional annotations recorded on the audit row (who/why); they are never required and never block.
 - **Runaway guard** — a safety backstop, not authorization: the same call looped in a tight window trips a circuit breaker. Disable with `AI_GUARDIAN_RUNAWAY_MAX=0`.
 - `remove_model` supports `--dry-run` + double confirmation at the CLI and records an undo (re-pull); allowlist/denylist writes record an undo → the prior list.

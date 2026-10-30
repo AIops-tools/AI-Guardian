@@ -2,6 +2,8 @@
 
 # AI Guardian
 
+> **Audit availability:** Real writes require a committed `pending` audit row and stop before contacting the platform if storage is unavailable. Reads and previews may continue with a warning; new audit rows store outcome summaries rather than full responses.
+
 > **Disclaimer**: Community-maintained open-source project. **Not affiliated with, endorsed by, or sponsored by Ollama, IGEL, or any AI-security vendor.** Product and trademark names belong to their owners. MIT licensed.
 
 Governed **observability + governance for on-endpoint local LLMs**. It lets you
@@ -229,7 +231,7 @@ ai-guardian mcp                                # or: ai-guardian-mcp
 Every operation — MCP **and** CLI — passes through the bundled `@governed_tool`
 harness. It records; it does not authorize (see above).
 
-- **Audit** — every call (params, result, status, duration, risk tier, and any
+- **Audit** — every call (params, outcome summary, status, duration, risk tier, and any
   operator-supplied approver/rationale) is logged to `~/.ai-guardian/audit.db`
   (relocatable via `AI_GUARDIAN_AIOPS_HOME`). This is **separate** from
   `~/.ai-guardian/usage.db`, which holds the observed local-LLM usage.
