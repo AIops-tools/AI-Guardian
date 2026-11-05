@@ -1,6 +1,6 @@
 {
   "id": "ai-guardian",
-  "name": "AI Guardian",
+  "name": "Local LLM Guard for Ollama / llama.cpp",
   "description": "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools.",
   "skills": [
     "./skills"

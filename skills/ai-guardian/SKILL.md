@@ -1,7 +1,7 @@
 ---
 name: ai-guardian
 slug: ai-guardian
-displayName: "AI Guardian"
+displayName: "Local LLM Guard for Ollama / llama.cpp"
 summary: "Governed local-LLM observability: model policy, prompt scanner, capture proxy, 21 tools."
 license: MIT
 homepage: https://github.com/AIops-tools/AI-Guardian
