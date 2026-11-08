@@ -1,8 +1,9 @@
 # Changelog
 
-## v0.14.1 — 2026-11-06
+## v0.14.1 — 2026-11-08
 
 - Clarified the searchable display name to identify the supported products. Install IDs and API behavior are unchanged.
+- Bypass environment HTTP proxies for loopback capture-proxy upstreams, preserving proxy behavior for remote upstreams.
 
 ## v0.14.0 — 2026-10-30
 

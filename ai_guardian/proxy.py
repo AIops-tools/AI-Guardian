@@ -32,7 +32,9 @@ from __future__ import annotations
 import json
 import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from ipaddress import ip_address
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -40,6 +42,18 @@ from ai_guardian import scanner
 from ai_guardian.ops._util import s
 
 logger = logging.getLogger("ai-guardian.proxy")
+
+
+def _is_loopback_upstream(url: str) -> bool:
+    host = urlsplit(url).hostname
+    if host is None:
+        return False
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 #: Request paths whose body carries a prompt this proxy scans. Anything else is
 #: forwarded untouched — a tags/show/embeddings call has no prompt to govern, and
@@ -349,7 +363,11 @@ class GuardianProxy(ThreadingHTTPServer):
         self._on_event = on_event
         # A generous read timeout: a local model generating a long answer is slow,
         # and a proxy that times out mid-generation looks like a model failure.
-        self.client = httpx.Client(base_url=self.upstream, timeout=timeout_seconds)
+        self.client = httpx.Client(
+            base_url=self.upstream,
+            timeout=timeout_seconds,
+            trust_env=not _is_loopback_upstream(self.upstream),
+        )
 
     def record(self, verdict: dict) -> None:
         """Hand one verdict to the usage log (never the prompt text itself)."""

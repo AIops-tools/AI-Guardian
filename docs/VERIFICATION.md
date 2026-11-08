@@ -1,5 +1,15 @@
 # Live verification — ai-guardian
 
+## Local proxy regression (2026-11-08)
+
+On a macOS host with a system HTTP proxy, the loopback proxy tests returned
+HTTP 502 before reaching their local upstream. An explicit regression test with
+`HTTP_PROXY` set and `NO_PROXY` removed failed before the fix and passes now:
+`GuardianProxy` bypasses environment proxy discovery only when its upstream is
+loopback. Remote upstreams retain their configured proxy behavior. The full
+suite passed (358 tests); Ruff and Bandit reported no Medium or High findings.
+This tests a real loopback HTTP server, not a newly deployed Ollama runtime.
+
 `ai-guardian` is published on PyPI, the MCP Registry, and ClawHub. Its
 verification story splits cleanly in two, and the split matters:
 

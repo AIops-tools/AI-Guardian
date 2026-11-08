@@ -21,6 +21,18 @@ from ai_guardian import proxy as px
 
 pytestmark = pytest.mark.unit
 
+
+@pytest.fixture(autouse=True)
+def _bypass_system_proxy_for_loopback_tests(monkeypatch):
+    """Local HTTP fixtures must not inherit macOS system proxy settings."""
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
+
+
+@pytest.fixture
+def hostile_proxy_environment(monkeypatch):
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1")
+    monkeypatch.delenv("NO_PROXY", raising=False)
+
 SECRET_PROMPT = "here is my key AKIAIOSFODNN7EXAMPLE please use it"
 CLEAN_PROMPT = "summarise the release notes"
 
@@ -198,6 +210,18 @@ def test_a_clean_request_reaches_the_upstream_and_streams_back(live_proxy):
     assert stub.seen[0]["path"] == "/api/generate"
     assert json.loads(stub.seen[0]["body"])["prompt"] == CLEAN_PROMPT
     assert events and events[0]["blocked"] is False
+
+
+def test_loopback_upstream_ignores_a_process_proxy(hostile_proxy_environment, live_proxy):
+    """A local model stays reachable even when the operator has an HTTP proxy."""
+    base, _events, stub = live_proxy
+    with httpx.Client(timeout=10.0, trust_env=False) as client:
+        resp = client.post(
+            f"{base}/api/generate",
+            json={"model": "llama3", "prompt": CLEAN_PROMPT},
+        )
+    assert resp.status_code == 200
+    assert len(stub.seen) == 1
 
 
 def test_a_blocked_request_never_reaches_the_upstream(live_proxy):
